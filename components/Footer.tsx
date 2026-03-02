@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useLang } from '@/lib/i18n'
 import { LogoMark } from './Logo'
 import { motion } from 'framer-motion'
@@ -9,8 +10,8 @@ const INSTAGRAM_URL = 'https://instagram.com/hub_lorenzo'
 const PHONE = '+51 944 629 513'
 
 export function Footer() {
-  const { lang, setLang, t } = useLang()
-  const toggle = () => setLang(lang === 'es' ? 'en' : 'es')
+  const { lang, t } = useLang()
+  const altLang = lang === 'es' ? 'en' : 'es'
 
   return (
     <footer className="border-t border-black/10 px-6 md:px-10 lg:px-16 py-16 md:py-20">
@@ -25,19 +26,22 @@ export function Footer() {
           </div>
 
           {/* Footer language toggle — adequate touch target */}
-          <motion.button
-            onClick={toggle}
-            className="font-mono text-[10px] font-bold tracking-widest text-mid-gray
-                       py-2 px-2 -mr-2 min-h-[44px] flex items-center"
+          <motion.div
             whileHover={{ scale: 0.97 }}
             whileTap={{ scale: 0.94 }}
             transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-            aria-label={`Switch to ${t.nav.localeAlt}`}
           >
-            {t.nav.locale}
-            <span className="mx-1 opacity-30">/</span>
-            <span className="opacity-40">{t.nav.localeAlt}</span>
-          </motion.button>
+            <Link
+              href={`/${altLang}`}
+              className="font-mono text-[10px] font-bold tracking-widest text-mid-gray
+                         py-2 px-2 -mr-2 min-h-[44px] flex items-center"
+              aria-label={`Switch to ${t.nav.localeAlt}`}
+            >
+              {t.nav.locale}
+              <span className="mx-1 opacity-30">/</span>
+              <span className="opacity-40">{t.nav.localeAlt}</span>
+            </Link>
+          </motion.div>
         </div>
 
         {/* Info grid — technical sheet of an art exhibition */}

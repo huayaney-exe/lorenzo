@@ -15,8 +15,8 @@ export async function PUT(
     }
     return NextResponse.json({ service })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Error al actualizar'
-    return NextResponse.json({ error: message }, { status: 400 })
+    console.error('Service update failed:', err)
+    return NextResponse.json({ error: 'Error al actualizar servicio' }, { status: 400 })
   }
 }
 
@@ -34,7 +34,7 @@ export async function DELETE(
     await deleteService(id)
     return NextResponse.json({ ok: true })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Error al eliminar'
-    return NextResponse.json({ error: message }, { status: 409 })
+    console.error('Service delete failed:', err)
+    return NextResponse.json({ error: 'Error al eliminar servicio' }, { status: 409 })
   }
 }

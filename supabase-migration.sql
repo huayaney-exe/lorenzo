@@ -223,7 +223,54 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- 7. Add slug column if missing (safe for existing databases)
+-- 7. Atomic Booking Creation (prevents race conditions)
+CREATE OR REPLACE FUNCTION create_booking_atomic(
+  p_session_id UUID,
+  p_name TEXT,
+  p_phone TEXT,
+  p_seats INTEGER,
+  p_total_pen NUMERIC(10, 2),
+  p_addons UUID[],
+  p_lang TEXT
+)
+RETURNS UUID AS $$
+DECLARE
+  v_max_spots INTEGER;
+  v_booked INTEGER;
+  v_available INTEGER;
+  v_booking_id UUID;
+BEGIN
+  -- Lock the session row to prevent concurrent reads
+  SELECT max_spots INTO v_max_spots
+  FROM sessions
+  WHERE id = p_session_id AND status = 'scheduled'
+  FOR UPDATE;
+
+  IF v_max_spots IS NULL THEN
+    RAISE EXCEPTION 'Session not found or cancelled';
+  END IF;
+
+  -- Calculate current bookings (within the lock)
+  SELECT COALESCE(SUM(seats), 0) INTO v_booked
+  FROM bookings
+  WHERE session_id = p_session_id AND status != 'rejected';
+
+  v_available := v_max_spots - v_booked;
+
+  IF v_available < p_seats THEN
+    RAISE EXCEPTION 'Not enough spots: % available, % requested', v_available, p_seats;
+  END IF;
+
+  -- Insert the booking
+  INSERT INTO bookings (session_id, name, phone, seats, total_pen, addons, status, lang)
+  VALUES (p_session_id, p_name, p_phone, p_seats, p_total_pen, p_addons, 'pending', p_lang)
+  RETURNING id INTO v_booking_id;
+
+  RETURN v_booking_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 8. Add slug column if missing (safe for existing databases)
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'services' AND column_name = 'slug') THEN
     ALTER TABLE services ADD COLUMN slug TEXT;

@@ -232,7 +232,7 @@ export function BookingForm({ session, service, onSubmit, submitting }: Props) {
               )}
               {isFlat && (
                 <span className="font-mono text-[10px] text-mid-gray">
-                  grupo
+                  {lang === 'es' ? 'grupo' : 'group'}
                 </span>
               )}
             </div>

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
+import { useLang } from '@/lib/i18n'
 
 interface ConfirmSession {
   id: string
@@ -82,6 +83,7 @@ const reveal = {
 
 export function ConfirmStep({ session, service, booking, addons, onBack, lang }: Props) {
   const router = useRouter()
+  const { t } = useLang()
   const [submitting, setSubmitting] = useState(false)
 
   const endTime = addMinutes(session.time, session.durationMinutes)
@@ -157,7 +159,7 @@ export function ConfirmStep({ session, service, booking, addons, onBack, lang }:
           {/* Seats */}
           <div className="flex justify-between items-baseline">
             <span className="font-mono text-xs tracking-widest text-mid-gray uppercase">
-              {lang === 'es' ? 'Personas' : 'People'}
+              {t.book.form.seats}
             </span>
             <span className="font-grotesk text-sm text-asphalt">
               {booking.seats}
@@ -167,7 +169,7 @@ export function ConfirmStep({ session, service, booking, addons, onBack, lang }:
           {/* Contact */}
           <div className="flex justify-between items-baseline">
             <span className="font-mono text-xs tracking-widest text-mid-gray uppercase">
-              {lang === 'es' ? 'Contacto' : 'Contact'}
+              {t.footer.contact}
             </span>
             <div className="text-right">
               <span className="font-grotesk text-sm text-asphalt block">{booking.name}</span>
@@ -251,9 +253,7 @@ export function ConfirmStep({ session, service, booking, addons, onBack, lang }:
         variants={reveal}
         className="font-mono text-xs tracking-wide text-mid-gray text-center px-4"
       >
-        {lang === 'es'
-          ? 'Se abrira WhatsApp para coordinar el pago.'
-          : 'WhatsApp will open to coordinate payment.'}
+        {t.book.confirm.note}
       </motion.p>
 
       {/* CTA button */}
@@ -282,10 +282,10 @@ export function ConfirmStep({ session, service, booking, addons, onBack, lang }:
                   transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                   className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
                 />
-                {lang === 'es' ? 'Enviando...' : 'Sending...'}
+                {lang === 'es' ? 'Enviando…' : 'Sending…'}
               </>
             ) : (
-              lang === 'es' ? 'CONFIRMAR POR WHATSAPP' : 'CONFIRM VIA WHATSAPP'
+              t.book.confirm.whatsapp
             )}
           </span>
         </motion.button>
@@ -319,7 +319,7 @@ export function ConfirmStep({ session, service, booking, addons, onBack, lang }:
               strokeLinejoin="round"
             />
           </svg>
-          {lang === 'es' ? 'Editar datos' : 'Edit details'}
+          {t.book.confirm.edit}
         </button>
       </motion.div>
     </motion.div>

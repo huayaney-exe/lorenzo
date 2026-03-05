@@ -1,6 +1,14 @@
+import { cookies } from 'next/headers'
 import { AdminSidebar } from '@/components/admin/AdminSidebar'
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const cookieStore = await cookies()
+  const isAuth = cookieStore.has('admin-session')
+
+  if (!isAuth) {
+    return <>{children}</>
+  }
+
   return (
     <div className="min-h-screen bg-bone font-grotesk flex flex-col lg:flex-row">
       <AdminSidebar />

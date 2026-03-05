@@ -30,7 +30,7 @@ export async function DELETE(
     await deleteSession(id)
     return NextResponse.json({ ok: true })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Error al eliminar'
-    return NextResponse.json({ error: message }, { status: 409 })
+    console.error('Session delete failed:', err)
+    return NextResponse.json({ error: 'Error al eliminar sesion' }, { status: 409 })
   }
 }

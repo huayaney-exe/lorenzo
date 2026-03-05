@@ -96,7 +96,7 @@ export function SessionSlot({ session, isSelected, onSelect, index, service }: P
                 <span className={`block font-mono text-[9px] ${
                   isSelected ? 'text-white/40' : 'text-mid-gray/60'
                 }`}>
-                  pp
+                  {t.book.perPerson}
                 </span>
               )}
             </div>

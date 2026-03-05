@@ -32,7 +32,7 @@ export async function PUT(req: NextRequest) {
     const created = await bulkSetSchedules(serviceId, entries)
     return NextResponse.json({ schedules: created })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Error saving schedules'
-    return NextResponse.json({ error: message }, { status: 400 })
+    console.error('Schedule save failed:', err)
+    return NextResponse.json({ error: 'Error al guardar horarios' }, { status: 400 })
   }
 }

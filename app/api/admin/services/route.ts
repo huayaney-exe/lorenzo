@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     })
     return NextResponse.json({ service }, { status: 201 })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Error al crear servicio'
-    return NextResponse.json({ error: message }, { status: 400 })
+    console.error('Service create failed:', err)
+    return NextResponse.json({ error: 'Error al crear servicio' }, { status: 400 })
   }
 }

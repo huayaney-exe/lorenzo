@@ -650,7 +650,6 @@ export async function createBooking(data: {
 }): Promise<Booking> {
   const session = await getSessionById(data.sessionId)
   if (!session) throw new Error('Session not found')
-  if (session.availableSpots < data.seats) throw new Error('Not enough spots')
 
   const service = await getServiceById(session.serviceId)
   if (!service) throw new Error('Service not found')
@@ -664,22 +663,29 @@ export async function createBooking(data: {
     }
   }
 
-  const { data: row, error } = await supabase
-    .from('bookings')
-    .insert({
-      session_id: data.sessionId,
-      name: data.name,
-      phone: data.phone,
-      seats: data.seats,
-      total_pen: total,
-      addons: addonIds,
-      status: 'pending',
-      lang: data.lang,
-    })
-    .select()
-    .single()
-  if (error) throw error
-  return mapBooking(row)
+  // Atomic booking: check availability + insert in a single transaction (row-level lock)
+  const { data: bookingId, error: rpcError } = await supabase.rpc('create_booking_atomic', {
+    p_session_id: data.sessionId,
+    p_name: data.name,
+    p_phone: data.phone,
+    p_seats: data.seats,
+    p_total_pen: total,
+    p_addons: addonIds,
+    p_lang: data.lang,
+  })
+
+  if (rpcError) {
+    // Translate RPC exceptions to user-friendly errors
+    const msg = rpcError.message || ''
+    if (msg.includes('Not enough spots')) throw new Error('Not enough spots')
+    if (msg.includes('Session not found')) throw new Error('Session not found')
+    throw rpcError
+  }
+
+  // Fetch the created booking
+  const booking = await getBookingById(bookingId)
+  if (!booking) throw new Error('Booking creation failed')
+  return booking
 }
 
 export async function approveBooking(id: string): Promise<Booking | null> {

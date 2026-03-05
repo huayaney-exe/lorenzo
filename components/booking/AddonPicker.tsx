@@ -118,7 +118,7 @@ export function AddonPicker({ addons, selectedAddons, onToggle, seats, lang }: P
                           isSelected ? 'text-white/60' : 'text-mid-gray'
                         }`}
                       >
-                        {unitPrice} pp
+                        {unitPrice} {lang === 'es' ? 'c/u' : 'ea.'}
                       </span>
                       {seats > 1 && (
                         <span

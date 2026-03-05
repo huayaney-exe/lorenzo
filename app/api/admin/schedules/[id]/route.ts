@@ -10,7 +10,7 @@ export async function DELETE(
     await deleteSchedule(id)
     return NextResponse.json({ ok: true })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Error deleting schedule'
-    return NextResponse.json({ error: message }, { status: 400 })
+    console.error('Schedule delete failed:', err)
+    return NextResponse.json({ error: 'Error al eliminar horario' }, { status: 400 })
   }
 }

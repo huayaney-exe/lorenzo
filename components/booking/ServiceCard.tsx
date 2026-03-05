@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import { useLang } from '@/lib/i18n'
 import type { Service, Resource, PricingModel, Lang } from '@/lib/booking-data'
 
 interface NextAvailable {
@@ -39,6 +40,7 @@ const typeBadge: Record<string, { bg: string; text: string }> = {
 }
 
 export function ServiceCard({ service, lang, index }: Props) {
+  const { t } = useLang()
   const isFull =
     service.hasAvailability &&
     service.nextAvailable &&
@@ -48,12 +50,8 @@ export function ServiceCard({ service, lang, index }: Props) {
 
   const pricingLabel =
     service.pricingModel === 'per_person'
-      ? lang === 'es'
-        ? 'por persona'
-        : 'per person'
-      : lang === 'es'
-        ? 'grupo completo'
-        : 'full group'
+      ? t.services.perPerson
+      : t.services.flatRate
 
   const priceFormatted =
     service.pricePen >= 1000
@@ -114,12 +112,12 @@ export function ServiceCard({ service, lang, index }: Props) {
         <div className="flex items-center gap-2">
           {isFull ? (
             <span className="font-mono text-[10px] tracking-widest text-rojo uppercase font-bold">
-              {lang === 'es' ? 'LLENO' : 'FULL'}
+              {t.services.full}
             </span>
           ) : (
             <span className="font-mono text-[10px] tracking-wide text-mid-gray">
               {service.nextAvailable.availableSpots}{' '}
-              {lang === 'es' ? 'disponibles' : 'available'}
+              {t.services.available}
             </span>
           )}
         </div>
@@ -134,7 +132,7 @@ export function ServiceCard({ service, lang, index }: Props) {
                      hover:bg-rojo-dark transition-colors duration-200
                      focus-visible:outline-rojo focus-visible:outline-2 focus-visible:outline-offset-2"
         >
-          {lang === 'es' ? 'ELEGIR' : 'CHOOSE'}
+          {t.services.choose}
         </Link>
       ) : (
         <button
@@ -144,7 +142,7 @@ export function ServiceCard({ service, lang, index }: Props) {
                      bg-rojo text-white py-3.5 rounded-brutal mt-1
                      opacity-30 cursor-not-allowed"
         >
-          {lang === 'es' ? 'ELEGIR' : 'CHOOSE'}
+          {t.services.choose}
         </button>
       )}
     </motion.div>

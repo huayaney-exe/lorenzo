@@ -294,19 +294,17 @@ export default function WeeklyScheduleEditor({ serviceId, serviceName, durationM
                           <input
                             type="time"
                             value={w.startTime}
-                            step={1800}
                             onChange={(e) => updateWindow(day, idx, 'startTime', e.target.value)}
                             className="px-3 py-2 border border-black/10 rounded-brutal text-sm font-grotesk
-                              text-asphalt bg-bone focus:outline-none focus:border-asphalt/30 transition-colors"
+                              text-asphalt bg-white focus:outline-none focus:border-asphalt/30 transition-colors"
                           />
                           <span className="font-mono text-[10px] text-mid-gray">a</span>
                           <input
                             type="time"
                             value={w.endTime}
-                            step={1800}
                             onChange={(e) => updateWindow(day, idx, 'endTime', e.target.value)}
                             className="px-3 py-2 border border-black/10 rounded-brutal text-sm font-grotesk
-                              text-asphalt bg-bone focus:outline-none focus:border-asphalt/30 transition-colors"
+                              text-asphalt bg-white focus:outline-none focus:border-asphalt/30 transition-colors"
                           />
                           <button
                             onClick={() => removeWindow(day, idx)}

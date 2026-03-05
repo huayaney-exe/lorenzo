@@ -29,8 +29,8 @@ interface ForecastDay {
 interface WebTraffic {
   visitorsToday: number
   pageviewsToday: number
-  visitors3d: number
-  pageviews3d: number
+  visitors7d: number
+  pageviews7d: number
   topPages: Array<{ page: string; views: number }>
 }
 
@@ -225,8 +225,8 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <RevenueCard label="Visitantes hoy" value={String(data.webTraffic.visitorsToday)} />
             <RevenueCard label="Paginas hoy" value={String(data.webTraffic.pageviewsToday)} />
-            <RevenueCard label="Visitantes 3d" value={String(data.webTraffic.visitors3d)} />
-            <RevenueCard label="Paginas 3d" value={String(data.webTraffic.pageviews3d)} />
+            <RevenueCard label="Visitantes semana" value={String(data.webTraffic.visitors7d)} />
+            <RevenueCard label="Paginas semana" value={String(data.webTraffic.pageviews7d)} />
           </div>
           {data.webTraffic.topPages.length > 0 && (
             <div className="mt-3 p-4 border border-black/10 rounded-brutal bg-white">

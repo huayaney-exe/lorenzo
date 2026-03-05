@@ -182,15 +182,15 @@ export async function GET() {
         SELECT
           countIf(DISTINCT person_id, timestamp > now() - interval 1 day) as visitors_today,
           countIf(timestamp > now() - interval 1 day) as pageviews_today,
-          count(DISTINCT person_id) as visitors_3d,
-          count() as pageviews_3d
+          count(DISTINCT person_id) as visitors_7d,
+          count() as pageviews_7d
         FROM events
-        WHERE event = '$pageview' AND timestamp > now() - interval 3 day
+        WHERE event = '$pageview' AND timestamp > now() - interval 7 day
       `),
       queryPostHog(`
         SELECT properties."$pathname" as page, count() as views
         FROM events
-        WHERE event = '$pageview' AND timestamp > now() - interval 3 day
+        WHERE event = '$pageview' AND timestamp > now() - interval 7 day
         GROUP BY page ORDER BY views DESC LIMIT 5
       `),
     ])
@@ -350,18 +350,18 @@ export async function GET() {
     let webTraffic: {
       visitorsToday: number
       pageviewsToday: number
-      visitors3d: number
-      pageviews3d: number
+      visitors7d: number
+      pageviews7d: number
       topPages: Array<{ page: string; views: number }>
     } | null = null
 
     if (phTraffic && phTraffic.length > 0) {
-      const [visitorsToday, pageviewsToday, visitors3d, pageviews3d] = phTraffic[0]
+      const [visitorsToday, pageviewsToday, visitors7d, pageviews7d] = phTraffic[0]
       webTraffic = {
         visitorsToday: Number(visitorsToday),
         pageviewsToday: Number(pageviewsToday),
-        visitors3d: Number(visitors3d),
-        pageviews3d: Number(pageviews3d),
+        visitors7d: Number(visitors7d),
+        pageviews7d: Number(pageviews7d),
         topPages: (phPages ?? []).map((r: [string, number]) => ({
           page: r[0],
           views: Number(r[1]),

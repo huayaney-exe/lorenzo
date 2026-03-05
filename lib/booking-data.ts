@@ -35,6 +35,7 @@ export interface Resource {
 
 export interface Service {
   id: string
+  slug: string
   name: Record<Lang, string>
   description: Record<Lang, string>
   type: ServiceType
@@ -107,9 +108,18 @@ function mapResource(row: any): Resource {
   }
 }
 
+function toSlug(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
 function mapService(row: any): Service {
   return {
     id: row.id,
+    slug: row.slug || toSlug(row.name_en),
     name: { es: row.name_es, en: row.name_en },
     description: { es: row.description_es, en: row.description_en },
     type: row.type,
@@ -154,6 +164,7 @@ function mapSessionWithAvailability(row: any): SessionWithAvailability {
     occupationPct: Number(row.occupation_pct ?? 0),
     service: row.service_name_es ? {
       id: row.service_id ?? row.id,
+      slug: row.slug || toSlug(row.service_name_en || ''),
       name: { es: row.service_name_es, en: row.service_name_en },
       description: { es: '', en: '' },
       type: row.service_type,
@@ -369,6 +380,12 @@ export async function getServiceById(id: string): Promise<Service | null> {
   return mapService(data)
 }
 
+export async function getServiceBySlug(slug: string): Promise<Service | null> {
+  const { data, error } = await supabase.from('services').select('*').eq('slug', slug).single()
+  if (error) return null
+  return mapService(data)
+}
+
 export async function getAddonsByResource(resourceId: string | null): Promise<Service[]> {
   if (!resourceId) return []
   const { data, error } = await supabase
@@ -382,9 +399,11 @@ export async function getAddonsByResource(resourceId: string | null): Promise<Se
 }
 
 export async function createService(data: Omit<Service, 'id' | 'createdAt'>): Promise<Service> {
+  const slug = data.slug || toSlug(data.name.en)
   const { data: row, error } = await supabase
     .from('services')
     .insert({
+      slug,
       name_es: data.name.es,
       name_en: data.name.en,
       description_es: data.description.es,
@@ -406,7 +425,11 @@ export async function createService(data: Omit<Service, 'id' | 'createdAt'>): Pr
 
 export async function updateService(id: string, data: Partial<Service>): Promise<Service | null> {
   const updates: Record<string, unknown> = {}
-  if (data.name) { updates.name_es = data.name.es; updates.name_en = data.name.en }
+  if (data.name) {
+    updates.name_es = data.name.es
+    updates.name_en = data.name.en
+    updates.slug = toSlug(data.name.en)
+  }
   if (data.description) { updates.description_es = data.description.es; updates.description_en = data.description.en }
   if (data.type !== undefined) updates.type = data.type
   if (data.resourceId !== undefined) updates.resource_id = data.resourceId

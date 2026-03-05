@@ -11,6 +11,7 @@ interface NextAvailable {
 
 interface ServiceGridService {
   id: string
+  slug: string
   name: Record<'es' | 'en', string>
   type: string
   resourceId: string | null

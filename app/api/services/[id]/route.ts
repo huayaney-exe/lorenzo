@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import {
   getServiceById,
+  getServiceBySlug,
   generateAvailableSlots,
   getAddonsByResource,
   getResourceById,
@@ -11,13 +12,15 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const service = await getServiceById(id)
+
+  // Resolve by slug first, fall back to UUID
+  const service = await getServiceBySlug(id) ?? await getServiceById(id)
 
   if (!service) {
     return NextResponse.json({ error: 'Service not found' }, { status: 404 })
   }
 
-  const sessions = await generateAvailableSlots(id)
+  const sessions = await generateAvailableSlots(service.id)
   const addons = await getAddonsByResource(service.resourceId)
   const resource = service.resourceId ? await getResourceById(service.resourceId) : null
 

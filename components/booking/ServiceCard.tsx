@@ -11,6 +11,7 @@ interface NextAvailable {
 
 interface ServiceCardService {
   id: string
+  slug: string
   name: Record<'es' | 'en', string>
   type: string
   resourceId: string | null
@@ -127,7 +128,7 @@ export function ServiceCard({ service, lang, index }: Props) {
       {/* CTA */}
       {service.hasAvailability && !isFull ? (
         <Link
-          href={`/${lang}/book/${service.id}`}
+          href={`/${lang}/book/${service.slug}`}
           className="block w-full text-center font-grotesk font-bold text-sm tracking-display
                      bg-rojo text-white py-3.5 rounded-brutal mt-1
                      hover:bg-rojo-dark transition-colors duration-200

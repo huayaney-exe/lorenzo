@@ -8,6 +8,7 @@ import { motion } from 'framer-motion'
 
 interface ServicePreview {
   id: string
+  slug: string
   name: Record<string, string>
   type: string
   pricingModel: string
@@ -98,7 +99,7 @@ export function DisciplineSelector() {
                   variants={cardReveal}
                 >
                   <Link
-                    href={`/${lang}/book/${svc.id}`}
+                    href={`/${lang}/book/${svc.slug}`}
                     className="block bg-white/[0.08] backdrop-blur-sm border border-white/[0.1]
                                rounded-brutal px-5 py-4 hover:bg-white/[0.14] transition-colors duration-200 group"
                   >

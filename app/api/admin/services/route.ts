@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const service = await createService({
+      slug: body.slug || '',
       name: body.name,
       description: body.description,
       type: body.type,

@@ -173,7 +173,7 @@ export function BookingForm({ session, service, onSubmit, submitting }: Props) {
             placeholder={t.book.form.phonePlaceholder}
             autoComplete="tel-national"
             className="flex-1 font-grotesk text-[15px] text-asphalt bg-transparent
-                       pb-2.5 outline-none placeholder:text-mid-gray/30"
+                       pb-2.5 outline-none focus:outline-none placeholder:text-mid-gray/30"
           />
         </div>
       </div>

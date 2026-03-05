@@ -4,10 +4,19 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 
 function TimeInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [draft, setDraft] = useState(value)
-  const inputRef = useRef<HTMLInputElement>(null)
 
-  // Sync external value changes
+  // Sync external value changes (e.g. after server re-fetch)
   useEffect(() => { setDraft(value) }, [value])
+
+  function tryCommit(raw: string) {
+    const match = raw.match(/^(\d{1,2}):(\d{2})$/)
+    if (match) {
+      const h = Math.min(23, Math.max(0, parseInt(match[1])))
+      const m = Math.min(59, Math.max(0, parseInt(match[2])))
+      const formatted = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+      onChange(formatted)
+    }
+  }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     let raw = e.target.value.replace(/[^0-9:]/g, '')
@@ -17,9 +26,11 @@ function TimeInput({ value, onChange }: { value: string; onChange: (v: string) =
     if (raw.length > 5) raw = raw.slice(0, 5)
 
     setDraft(raw)
+    // Commit immediately when we have a full valid time
+    tryCommit(raw)
   }
 
-  function commit() {
+  function handleBlur() {
     const match = draft.match(/^(\d{1,2}):(\d{2})$/)
     if (match) {
       const h = Math.min(23, Math.max(0, parseInt(match[1])))
@@ -28,29 +39,19 @@ function TimeInput({ value, onChange }: { value: string; onChange: (v: string) =
       setDraft(formatted)
       onChange(formatted)
     } else {
-      // Revert to last valid value
       setDraft(value)
-    }
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Enter') {
-      commit()
-      inputRef.current?.blur()
     }
   }
 
   return (
     <input
-      ref={inputRef}
       type="text"
       inputMode="numeric"
       placeholder="HH:MM"
       maxLength={5}
       value={draft}
       onChange={handleChange}
-      onBlur={commit}
-      onKeyDown={handleKeyDown}
+      onBlur={handleBlur}
       className="w-[80px] px-3 py-2 border border-black/10 rounded-brutal text-sm font-grotesk text-center
         text-asphalt bg-white focus:outline-none focus:border-asphalt/30 transition-colors"
     />
@@ -257,8 +258,9 @@ export default function WeeklyScheduleEditor({ serviceId, serviceName, durationM
         throw new Error(data.error || 'Error al guardar')
       }
 
+      // Re-fetch from server to ensure grid matches saved state
+      await fetchSchedules()
       setFeedback({ type: 'success', message: 'Horarios guardados correctamente' })
-      generatePreview()
     } catch (err) {
       setFeedback({ type: 'error', message: err instanceof Error ? err.message : 'Error inesperado' })
     } finally {

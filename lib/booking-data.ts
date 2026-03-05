@@ -439,9 +439,15 @@ export async function getServiceById(id: string): Promise<Service | null> {
 }
 
 export async function getServiceBySlug(slug: string): Promise<Service | null> {
+  // Try direct slug match first
   const { data, error } = await supabase.from('services').select('*').eq('slug', slug).single()
-  if (error) return null
-  return mapService(data)
+  if (!error && data) return mapService(data)
+
+  // Fallback: scan active services and match by generated slug (handles missing/stale slug column)
+  const { data: all, error: allErr } = await supabase.from('services').select('*').eq('active', true)
+  if (allErr || !all) return null
+  const match = all.find((row: any) => toSlug(row.name_en) === slug)
+  return match ? mapService(match) : null
 }
 
 export async function getServicesByIds(ids: string[]): Promise<Service[]> {

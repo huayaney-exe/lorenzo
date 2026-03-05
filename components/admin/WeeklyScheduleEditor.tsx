@@ -2,6 +2,61 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 
+function TimeInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [draft, setDraft] = useState(value)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // Sync external value changes
+  useEffect(() => { setDraft(value) }, [value])
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    let raw = e.target.value.replace(/[^0-9:]/g, '')
+
+    // Auto-insert colon: "07" → "07:", "073" → "07:3"
+    if (raw.length === 2 && !raw.includes(':')) raw = raw + ':'
+    if (raw.length > 5) raw = raw.slice(0, 5)
+
+    setDraft(raw)
+  }
+
+  function commit() {
+    const match = draft.match(/^(\d{1,2}):(\d{2})$/)
+    if (match) {
+      const h = Math.min(23, Math.max(0, parseInt(match[1])))
+      const m = Math.min(59, Math.max(0, parseInt(match[2])))
+      const formatted = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+      setDraft(formatted)
+      onChange(formatted)
+    } else {
+      // Revert to last valid value
+      setDraft(value)
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter') {
+      commit()
+      inputRef.current?.blur()
+    }
+  }
+
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      inputMode="numeric"
+      placeholder="HH:MM"
+      maxLength={5}
+      value={draft}
+      onChange={handleChange}
+      onBlur={commit}
+      onKeyDown={handleKeyDown}
+      className="w-[80px] px-3 py-2 border border-black/10 rounded-brutal text-sm font-grotesk text-center
+        text-asphalt bg-white focus:outline-none focus:border-asphalt/30 transition-colors"
+    />
+  )
+}
+
 interface Props {
   serviceId: string
   serviceName: string
@@ -291,20 +346,14 @@ export default function WeeklyScheduleEditor({ serviceId, serviceName, durationM
                     <div className="space-y-2">
                       {dayData.windows.map((w, idx) => (
                         <div key={idx} className="flex items-center gap-2 flex-wrap">
-                          <input
-                            type="time"
+                          <TimeInput
                             value={w.startTime}
-                            onChange={(e) => updateWindow(day, idx, 'startTime', e.target.value)}
-                            className="px-3 py-2 border border-black/10 rounded-brutal text-sm font-grotesk
-                              text-asphalt bg-white focus:outline-none focus:border-asphalt/30 transition-colors"
+                            onChange={(v) => updateWindow(day, idx, 'startTime', v)}
                           />
                           <span className="font-mono text-[10px] text-mid-gray">a</span>
-                          <input
-                            type="time"
+                          <TimeInput
                             value={w.endTime}
-                            onChange={(e) => updateWindow(day, idx, 'endTime', e.target.value)}
-                            className="px-3 py-2 border border-black/10 rounded-brutal text-sm font-grotesk
-                              text-asphalt bg-white focus:outline-none focus:border-asphalt/30 transition-colors"
+                            onChange={(v) => updateWindow(day, idx, 'endTime', v)}
                           />
                           <button
                             onClick={() => removeWindow(day, idx)}

@@ -801,6 +801,122 @@ export async function getAllBookings(filters?: {
   })
 }
 
+export interface CalendarSession {
+  id: string
+  serviceName: string
+  time: string
+  endTime: string
+  durationMinutes: number
+  maxSpots: number
+  bookedSpots: number
+  status: string
+  bookings: Array<{
+    id: string
+    name: string
+    phone: string
+    seats: number
+    status: BookingStatus
+  }>
+}
+
+export interface CalendarResource {
+  id: string
+  name: string
+  capacity: number
+  sessions: CalendarSession[]
+}
+
+export interface CalendarData {
+  date: string
+  resources: CalendarResource[]
+  unassigned: CalendarSession[]
+}
+
+export async function getCalendarData(date: string): Promise<CalendarData> {
+  // Fetch all sessions for the date with availability info
+  const { data: sessionRows, error: sessErr } = await supabase
+    .from('sessions_with_availability')
+    .select('*')
+    .eq('date', date)
+    .neq('status', 'cancelled')
+    .order('time')
+  if (sessErr) throw sessErr
+
+  const sessions = (sessionRows ?? []).map(mapSessionWithAvailability)
+
+  // Fetch all bookings for these sessions in one query
+  const sessionIds = sessions.map((s) => s.id)
+  const { data: bookingRows } = sessionIds.length > 0
+    ? await supabase.from('bookings').select('*').in('session_id', sessionIds)
+    : { data: [] }
+  const allBookings = (bookingRows ?? []).map(mapBooking)
+
+  // Group bookings by session
+  const bookingsBySession = new Map<string, Booking[]>()
+  for (const b of allBookings) {
+    const arr = bookingsBySession.get(b.sessionId) ?? []
+    arr.push(b)
+    bookingsBySession.set(b.sessionId, arr)
+  }
+
+  // Fetch all resources
+  const resources = await getResources()
+
+  // Build calendar sessions
+  function toCalendarSession(s: SessionWithAvailability): CalendarSession {
+    const sessionBookings = bookingsBySession.get(s.id) ?? []
+    return {
+      id: s.id,
+      serviceName: s.service?.name?.es ?? '—',
+      time: s.time,
+      endTime: addMinutesToTime(s.time, s.durationMinutes),
+      durationMinutes: s.durationMinutes,
+      maxSpots: s.maxSpots,
+      bookedSpots: s.bookedSpots,
+      status: sessionBookings.some((b) => b.status === 'pending')
+        ? 'has_pending'
+        : sessionBookings.some((b) => b.status === 'approved')
+          ? 'confirmed'
+          : 'empty',
+      bookings: sessionBookings.map((b) => ({
+        id: b.id,
+        name: b.name,
+        phone: b.phone,
+        seats: b.seats,
+        status: b.status,
+      })),
+    }
+  }
+
+  // Group sessions by resource
+  const resourceMap = new Map<string, CalendarSession[]>()
+  const unassigned: CalendarSession[] = []
+
+  for (const s of sessions) {
+    const cs = toCalendarSession(s)
+    const resourceId = s.service?.resourceId ?? s.resource?.id
+    if (resourceId) {
+      const arr = resourceMap.get(resourceId) ?? []
+      arr.push(cs)
+      resourceMap.set(resourceId, arr)
+    } else {
+      unassigned.push(cs)
+    }
+  }
+
+  // Build resource rows (include all resources, even empty ones)
+  const calendarResources: CalendarResource[] = resources
+    .filter((r) => r.active)
+    .map((r) => ({
+      id: r.id,
+      name: r.name,
+      capacity: r.capacity,
+      sessions: resourceMap.get(r.id) ?? [],
+    }))
+
+  return { date, resources: calendarResources, unassigned }
+}
+
 export async function getBookingsBySession(sessionId: string): Promise<Booking[]> {
   const { data, error } = await supabase.from('bookings').select('*').eq('session_id', sessionId)
   if (error) throw error
@@ -1065,6 +1181,12 @@ export async function materializeSlot(slotId: string): Promise<Session | null> {
 
   const service = await getServiceById(serviceId)
   if (!service) return null
+
+  // Check resource availability before inserting to prevent double-booking
+  if (service.resourceId) {
+    const available = await checkResourceAvailability(service.resourceId, date, time, service.durationMinutes)
+    if (!available) return null
+  }
 
   const { data: row, error } = await supabase
     .from('sessions')

@@ -4,10 +4,7 @@ import Link from 'next/link'
 import { useLang } from '@/lib/i18n'
 import { LogoMark } from './Logo'
 import { motion } from 'framer-motion'
-
-const WA_BASE = 'https://wa.me/51944629513'
-const INSTAGRAM_URL = 'https://instagram.com/hub_lorenzo'
-const PHONE = '+51 944 629 513'
+import { WHATSAPP_URL, INSTAGRAM_URL, PHONE_DISPLAY } from '@/lib/config'
 
 export function Footer() {
   const { lang, t } = useLang()
@@ -45,7 +42,7 @@ export function Footer() {
         </div>
 
         {/* Info grid — technical sheet of an art exhibition */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-16 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-10 md:gap-12 mb-16">
           {/* Address */}
           <div>
             <span className="block font-mono text-[10px] tracking-widest text-mid-gray uppercase mb-3">
@@ -58,20 +55,34 @@ export function Footer() {
             </p>
           </div>
 
-          {/* Contact — links with adequate touch targets */}
+          {/* Book */}
+          <div>
+            <span className="block font-mono text-[10px] tracking-widest text-mid-gray uppercase mb-3">
+              {t.footer.book}
+            </span>
+            <Link
+              href={`/${lang}/book`}
+              className="block font-mono text-xs text-cement hover:text-rojo
+                         transition-colors duration-200 py-1.5 -ml-1 pl-1"
+            >
+              {t.experiences.cta}
+            </Link>
+          </div>
+
+          {/* Contact */}
           <div>
             <span className="block font-mono text-[10px] tracking-widest text-mid-gray uppercase mb-3">
               {t.footer.contact}
             </span>
             <div className="space-y-1">
               <a
-                href={WA_BASE}
+                href={WHATSAPP_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block font-mono text-xs text-cement hover:text-rojo
                            transition-colors duration-200 py-1.5 -ml-1 pl-1"
               >
-                {PHONE}
+                {PHONE_DISPLAY}
               </a>
               <a
                 href={INSTAGRAM_URL}

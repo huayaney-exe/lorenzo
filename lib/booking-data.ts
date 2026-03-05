@@ -474,7 +474,18 @@ export async function getAddonsByResource(resourceId: string | null): Promise<Se
 }
 
 export async function createService(data: Omit<Service, 'id' | 'createdAt'>): Promise<Service> {
-  const slug = data.slug || toSlug(data.name.en)
+  let slug = data.slug || toSlug(data.name.en)
+
+  // Ensure slug uniqueness by appending a suffix if needed
+  const { data: existing } = await supabase
+    .from('services')
+    .select('slug')
+    .eq('slug', slug)
+    .limit(1)
+  if (existing && existing.length > 0) {
+    slug = `${slug}-${Date.now().toString(36).slice(-4)}`
+  }
+
   const { data: row, error } = await supabase
     .from('services')
     .insert({

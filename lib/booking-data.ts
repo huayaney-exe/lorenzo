@@ -225,13 +225,8 @@ export function computeTotal(pricingModel: PricingModel, pricePen: number, seats
   return pricingModel === 'per_person' ? pricePen * seats : pricePen
 }
 
-export function formatPrice(amount: number): string {
-  return amount >= 1000 ? `S/${amount.toLocaleString('es-PE')}` : `S/${amount}`
-}
-
-export function formatOccupation(pct: number): string {
-  return pct >= 100 ? 'LLENO' : `${pct}%`
-}
+// Re-export from client-safe module for backwards compat
+export { formatPrice, formatOccupation } from './format'
 
 export function formatDate(dateStr: string, lang: Lang): string {
   const date = new Date(dateStr + 'T12:00:00')

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ServiceTypeBadge, AddonBadge } from '@/components/admin/ServiceTypeBadge'
-import { formatPrice } from '@/lib/booking-data'
+import { formatPrice } from '@/lib/format'
 import type { ServiceType, PricingModel } from '@/lib/booking-data'
 
 interface ServiceResource {
@@ -138,9 +138,9 @@ export default function ServicesListPage() {
               }`}
             >
               {/* Top row: name, badges, actions */}
-              <div className="flex items-start justify-between gap-3 mb-2">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3 mb-2">
                 <div className="flex items-center gap-2 flex-wrap min-w-0">
-                  <span className="font-grotesk font-bold text-sm text-asphalt truncate">
+                  <span className="font-grotesk font-bold text-sm text-asphalt">
                     {svc.name.es}
                   </span>
                   <ServiceTypeBadge type={svc.type} />

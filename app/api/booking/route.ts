@@ -3,6 +3,7 @@ import {
   createBooking,
   getSessionById,
   getServiceById,
+  getResourceById,
   buildWhatsAppUrl,
   materializeSlot,
 } from '@/lib/booking-data'
@@ -42,7 +43,12 @@ export async function POST(req: NextRequest) {
     })
 
     const service = await getServiceById(session.serviceId)
-    const whatsappUrl = service ? buildWhatsAppUrl(booking, session, service) : ''
+    const addonServices = await Promise.all(
+      (addons || []).map((id: string) => getServiceById(id))
+    )
+    const resolvedAddons = addonServices.filter((a): a is NonNullable<typeof a> => a !== null)
+    const resource = service?.resourceId ? await getResourceById(service.resourceId) : null
+    const whatsappUrl = service ? buildWhatsAppUrl(booking, session, service, resolvedAddons, resource) : ''
 
     return NextResponse.json({ bookingId: booking.id, whatsappUrl })
   } catch (err) {

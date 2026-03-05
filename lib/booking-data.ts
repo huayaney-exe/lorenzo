@@ -270,12 +270,70 @@ function timeRangesOverlap(
   return startA < endB && startB < endA
 }
 
-export function buildWhatsAppUrl(booking: Booking, session: Session, service: Service): string {
+export function buildWhatsAppUrl(
+  booking: Booking,
+  session: Session,
+  service: Service,
+  addons: Service[] = [],
+  resource?: Resource | null,
+): string {
   const endTime = getEndTime(session.time, session.durationMinutes)
-  const seatLabel = booking.seats === 1 ? 'persona' : 'personas'
-  const msg = booking.lang === 'es'
-    ? `Hola! Soy ${booking.name}. Reserva #${booking.id}: ${service.name.es} el ${session.date} de ${session.time} a ${endTime}. ${booking.seats} ${seatLabel}. Total: S/${booking.totalPen}.`
-    : `Hi! I'm ${booking.name}. Booking #${booking.id}: ${service.name.en} on ${session.date} from ${session.time} to ${endTime}. ${booking.seats} person(s). Total: S/${booking.totalPen}.`
+  const isEs = booking.lang === 'es'
+
+  // Human-readable date
+  const dateObj = new Date(session.date + 'T12:00:00')
+  const dateFmt = dateObj.toLocaleDateString(isEs ? 'es-PE' : 'en-US', {
+    weekday: 'long', day: 'numeric', month: 'long',
+  })
+
+  // Header
+  const seatLabel = isEs
+    ? (booking.seats === 1 ? 'persona' : 'personas')
+    : (booking.seats === 1 ? 'person' : 'people')
+  const greeting = isEs
+    ? `Hola! Soy ${booking.name}.`
+    : `Hi! I'm ${booking.name}.`
+  const bookingRef = isEs
+    ? `Reserva #${booking.id.slice(0, 8)}`
+    : `Booking #${booking.id.slice(0, 8)}`
+
+  // Service line
+  const svcName = isEs ? service.name.es : service.name.en
+  const resourceNote = resource ? ` (${resource.name})` : ''
+
+  // Price breakdown
+  const baseTotal = computeTotal(service.pricingModel, session.pricePen, booking.seats)
+  const basePrice = service.pricingModel === 'per_person'
+    ? `S/${session.pricePen} x ${booking.seats} = S/${baseTotal}`
+    : `S/${session.pricePen}`
+
+  // Add-on lines
+  const addonLines = addons.map((a) => {
+    const aName = isEs ? a.name.es : a.name.en
+    const aTotal = computeTotal(a.pricingModel, a.pricePen, booking.seats)
+    const aPrice = a.pricingModel === 'per_person'
+      ? `S/${a.pricePen} x ${booking.seats} = S/${aTotal}`
+      : `S/${a.pricePen}`
+    return `  + ${aName}: ${aPrice}`
+  })
+
+  // Build message
+  const lines = [
+    greeting,
+    '',
+    `${bookingRef}`,
+    `${svcName}${resourceNote}`,
+    `${dateFmt} · ${session.time} - ${endTime}`,
+    `${booking.seats} ${seatLabel}`,
+    '',
+    `${svcName}: ${basePrice}`,
+    ...addonLines,
+    `*Total: S/${booking.totalPen}*`,
+    '',
+    isEs ? `Tel: ${booking.phone}` : `Phone: ${booking.phone}`,
+  ]
+
+  const msg = lines.join('\n')
   const phone = process.env.NEXT_PUBLIC_WHATSAPP_PHONE || '51944629513'
   return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`
 }

@@ -444,6 +444,13 @@ export async function getServiceBySlug(slug: string): Promise<Service | null> {
   return mapService(data)
 }
 
+export async function getServicesByIds(ids: string[]): Promise<Service[]> {
+  if (ids.length === 0) return []
+  const { data, error } = await supabase.from('services').select('*').in('id', ids)
+  if (error) throw error
+  return (data ?? []).map(mapService)
+}
+
 export async function getAddonsByResource(resourceId: string | null): Promise<Service[]> {
   if (!resourceId) return []
   const { data, error } = await supabase
@@ -724,7 +731,6 @@ export async function getAllBookings(filters?: {
   from?: string
   to?: string
 }): Promise<(Booking & { session?: SessionWithAvailability; service?: Service })[]> {
-  // Get bookings with session join
   let query = supabase.from('bookings').select('*').order('created_at', { ascending: false })
   if (filters?.status) query = query.eq('status', filters.status)
 
@@ -732,15 +738,35 @@ export async function getAllBookings(filters?: {
   if (error) throw error
   const allBookings = (bookingRows ?? []).map(mapBooking)
 
-  // Enrich with session/service data
+  // Batch-fetch all sessions at once (1 query instead of N)
+  const sessionIds = [...new Set(allBookings.map((b) => b.sessionId))]
+  let sessionsQuery = supabase.from('sessions_with_availability').select('*').in('id', sessionIds)
+  if (filters?.serviceId) sessionsQuery = sessionsQuery.eq('service_id', filters.serviceId)
+  if (filters?.from) sessionsQuery = sessionsQuery.gte('date', filters.from)
+  if (filters?.to) sessionsQuery = sessionsQuery.lte('date', filters.to)
+
+  const { data: sessionRows } = sessionIds.length > 0 ? await sessionsQuery : { data: [] }
+  const sessionMap = new Map<string, SessionWithAvailability>()
+  for (const row of (sessionRows ?? []).map(mapSessionWithAvailability)) {
+    sessionMap.set(row.id, row)
+  }
+
+  // Batch-fetch all services at once (1 query instead of N)
+  const serviceIds = [...new Set([...sessionMap.values()].map((s) => s.serviceId))]
+  const services = serviceIds.length > 0 ? await getServicesByIds(serviceIds) : []
+  const serviceMap = new Map<string, Service>()
+  for (const svc of services) {
+    serviceMap.set(svc.id, svc)
+  }
+
+  // Assemble results
   const results: (Booking & { session?: SessionWithAvailability; service?: Service })[] = []
   for (const b of allBookings) {
-    const session = await getSessionById(b.sessionId)
-    if (filters?.serviceId && session?.serviceId !== filters.serviceId) continue
-    if (filters?.from && session && session.date < filters.from) continue
-    if (filters?.to && session && session.date > filters.to) continue
-    const service = session ? await getServiceById(session.serviceId) : undefined
-    results.push({ ...b, session: session ?? undefined, service: service ?? undefined })
+    const session = sessionMap.get(b.sessionId)
+    // If session filters were applied, skip bookings whose sessions didn't match
+    if ((filters?.serviceId || filters?.from || filters?.to) && !session) continue
+    const service = session ? serviceMap.get(session.serviceId) : undefined
+    results.push({ ...b, session, service })
   }
 
   return results.sort((a, b) => {

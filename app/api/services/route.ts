@@ -1,14 +1,20 @@
 import { NextResponse } from 'next/server'
-import { getActiveServices, generateAvailableSlots, getResourceById } from '@/lib/booking-data'
+import { getActiveServices, getResources, generateAvailableSlots } from '@/lib/booking-data'
 
 export async function GET() {
-  const services = await getActiveServices()
+  // 2 queries: all active services + all resources (instead of N+1)
+  const [services, resources] = await Promise.all([
+    getActiveServices(),
+    getResources(),
+  ])
+
+  const resourceMap = new Map(resources.map((r) => [r.id, r]))
 
   const result = await Promise.all(
     services.map(async (svc) => {
       const sessions = await generateAvailableSlots(svc.id)
       const nextSession = sessions[0]
-      const resource = svc.resourceId ? await getResourceById(svc.resourceId) : null
+      const resource = svc.resourceId ? resourceMap.get(svc.resourceId) ?? null : null
 
       return {
         ...svc,

@@ -3,6 +3,7 @@ import {
   createBooking,
   getSessionById,
   getServiceById,
+  getServicesByIds,
   getResourceById,
   buildWhatsAppUrl,
   materializeSlot,
@@ -80,13 +81,13 @@ export async function POST(req: NextRequest) {
       lang: validLang,
     })
 
-    const service = await getServiceById(session.serviceId)
-    const addonServices = await Promise.all(
-      cleanAddons.map((id) => getServiceById(id))
-    )
-    const resolvedAddons = addonServices.filter((a): a is NonNullable<typeof a> => a !== null)
+    // Batch-fetch service + addons in parallel (1-2 queries instead of N+1)
+    const [service, addonServices] = await Promise.all([
+      getServiceById(session.serviceId),
+      cleanAddons.length > 0 ? getServicesByIds(cleanAddons) : Promise.resolve([]),
+    ])
     const resource = service?.resourceId ? await getResourceById(service.resourceId) : null
-    const whatsappUrl = service ? buildWhatsAppUrl(booking, session, service, resolvedAddons, resource) : ''
+    const whatsappUrl = service ? buildWhatsAppUrl(booking, session, service, addonServices, resource) : ''
 
     return NextResponse.json({ bookingId: booking.id, whatsappUrl })
   } catch (err) {

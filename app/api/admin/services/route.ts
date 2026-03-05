@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServices, createService, getResourceById } from '@/lib/booking-data'
+import { getServices, getResources, createService } from '@/lib/booking-data'
 
 export async function GET() {
-  const services = await getServices()
-  const result = await Promise.all(
-    services.map(async (svc) => {
-      const resource = svc.resourceId ? await getResourceById(svc.resourceId) : null
-      return { ...svc, resource }
-    })
-  )
+  const [services, resources] = await Promise.all([getServices(), getResources()])
+  const resourceMap = new Map(resources.map((r) => [r.id, r]))
+  const result = services.map((svc) => ({
+    ...svc,
+    resource: svc.resourceId ? resourceMap.get(svc.resourceId) ?? null : null,
+  }))
   return NextResponse.json({ services: result })
 }
 

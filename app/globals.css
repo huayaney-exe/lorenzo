@@ -109,14 +109,15 @@ body {
   }
 }
 
-/* Focus-visible — consistent, brand-colored */
-:focus-visible {
+/* Focus-visible — only on interactive controls, not text inputs */
+button:focus-visible,
+a:focus-visible,
+select:focus-visible {
   outline: 2px solid var(--rojo);
   outline-offset: 2px;
 }
 
-button:focus-visible,
-a:focus-visible {
-  outline: 2px solid var(--rojo);
-  outline-offset: 2px;
+input:focus-visible,
+textarea:focus-visible {
+  outline: none;
 }

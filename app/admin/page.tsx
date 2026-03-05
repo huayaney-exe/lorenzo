@@ -2,52 +2,52 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { OccupationBar } from '@/components/admin/OccupationBar'
+import { formatPrice } from '@/lib/format'
 
-// --- Inline types (client component, no server imports) ---
+// --- Types ---
 
-interface SessionData {
+interface Booking {
   id: string
-  serviceId: string
-  date: string
-  time: string
-  durationMinutes: number
-  maxSpots: number
-  pricePen: number
-  coachId: string | null
-  status: string
-  bookedSpots: number
-  availableSpots: number
-  occupationPct: number
-  service_name_es?: string
-  service?: {
-    id: string
-    name: { es: string; en: string }
-    type: string
-    resourceId: string | null
-    durationMinutes: number
-  }
-  coach?: { id: string; name: string }
-  resource?: { id: string; name: string }
-}
-
-interface BookingData {
-  id: string
-  sessionId: string
   name: string
   phone: string
   seats: number
   totalPen: number
-  status: string
-  lang: string
+  serviceName: string
+  time: string
+  durationMinutes: number
   createdAt: string
-  session?: {
-    id: string
-    date: string
-    time: string
-    maxSpots: number
-    service?: { name: { es: string; en: string } }
+}
+
+interface ForecastDay {
+  date: string
+  dayOfWeek: number
+  totalCapacity: number
+  bookedSeats: number
+  occupationPct: number
+}
+
+interface WebTraffic {
+  visitorsToday: number
+  pageviewsToday: number
+  visitors3d: number
+  pageviews3d: number
+  topPages: Array<{ page: string; views: number }>
+}
+
+interface DashboardData {
+  tomorrowBookings: { approved: Booking[]; pending: Booking[] }
+  tomorrowOccupation: number
+  forecast: ForecastDay[]
+  revenue: {
+    today: number
+    yesterday: number
+    thisWeek: number
+    prevWeek: number
+    thisMonth: number
+    prevMonth: number
+    bookingsThisMonth: number
   }
+  webTraffic: WebTraffic | null
 }
 
 // --- Helpers ---
@@ -58,231 +58,331 @@ function addMinutes(time: string, mins: number): string {
   return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
 }
 
-function formatTodayHeader(): string {
+function formatTomorrowHeader(): string {
+  const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Lima' }))
+  d.setDate(d.getDate() + 1)
+  const weekday = d.toLocaleDateString('es-PE', { weekday: 'long', timeZone: 'America/Lima' })
+  const day = d.getDate()
+  const month = d.toLocaleDateString('es-PE', { month: 'long', timeZone: 'America/Lima' })
+  return `${weekday} ${day} de ${month}`
+}
+
+function waLink(phone: string): string {
+  return `https://wa.me/${phone.replace(/[^0-9]/g, '')}`
+}
+
+function timeAgo(isoDate: string): string {
   const now = new Date()
-  return now.toLocaleDateString('es-PE', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
+  const created = new Date(isoDate)
+  const diffMs = now.getTime() - created.getTime()
+  const diffMin = Math.floor(diffMs / 60000)
+  if (diffMin < 1) return 'ahora'
+  if (diffMin < 60) return `hace ${diffMin}min`
+  const diffHrs = Math.floor(diffMin / 60)
+  if (diffHrs < 24) return `hace ${diffHrs}h`
+  const diffDays = Math.floor(diffHrs / 24)
+  return `hace ${diffDays}d`
 }
 
-function getToday(): string {
-  return new Date().toISOString().split('T')[0]
+function pctDelta(current: number, previous: number): { pct: number; direction: 'up' | 'down' | 'flat' } {
+  if (previous === 0 && current === 0) return { pct: 0, direction: 'flat' }
+  if (previous === 0) return { pct: 100, direction: 'up' }
+  const pct = Math.round(((current - previous) / previous) * 100)
+  if (pct === 0) return { pct: 0, direction: 'flat' }
+  return { pct: Math.abs(pct), direction: pct > 0 ? 'up' : 'down' }
 }
 
-function getServiceName(session: SessionData): string {
-  return session.service_name_es || session.service?.name?.es || 'Servicio'
+const DAY_HEADERS = ['LUN', 'MAR', 'MIE', 'JUE', 'VIE', 'SAB', 'DOM']
+
+function dayOfWeekToGridCol(dow: number): number {
+  return dow === 0 ? 6 : dow - 1
 }
 
 // --- Component ---
 
 export default function AdminDashboard() {
-  const [sessions, setSessions] = useState<SessionData[]>([])
-  const [bookings, setBookings] = useState<BookingData[]>([])
+  const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/admin/sessions').then((r) => r.json()),
-      fetch('/api/admin/bookings').then((r) => r.json()),
-    ])
-      .then(([sessionsRes, bookingsRes]) => {
-        setSessions(sessionsRes.sessions ?? [])
-        setBookings(bookingsRes.bookings ?? [])
+    fetch('/api/admin/dashboard')
+      .then((r) => {
+        if (!r.ok) throw new Error()
+        return r.json()
       })
+      .then(setData)
+      .catch(() => setError(true))
       .finally(() => setLoading(false))
   }, [])
 
-  const today = getToday()
-
-  // --- Derived data ---
-
-  const todaySessions = sessions.filter(
-    (s) => s.date === today && s.status === 'scheduled'
-  )
-
-  const todayBookings = bookings.filter(
-    (b) => b.session?.date === today
-  )
-
-  const pendingBookings = bookings.filter((b) => b.status === 'pending')
-
-  const avgOccupation =
-    todaySessions.length > 0
-      ? Math.round(
-          todaySessions.reduce((sum, s) => sum + s.occupationPct, 0) /
-            todaySessions.length
-        )
-      : 0
-
-  const upcomingSessions = sessions
-    .filter((s) => s.status === 'scheduled' && s.date >= today)
-    .sort((a, b) => {
-      const keyA = `${a.date}T${a.time}`
-      const keyB = `${b.date}T${b.time}`
-      return keyA.localeCompare(keyB)
-    })
-    .slice(0, 12)
-
-  // --- Render ---
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <span className="font-mono text-xs text-mid-gray tracking-widest animate-pulse">
-          CARGANDO...
-        </span>
+      <div className="space-y-6 max-w-5xl">
+        <div className="h-16 bg-black/[0.06] rounded-brutal animate-pulse" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-24 bg-black/[0.06] rounded-brutal animate-pulse" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="h-48 bg-black/[0.06] rounded-brutal animate-pulse" />
+          <div className="h-48 bg-black/[0.06] rounded-brutal animate-pulse" />
+        </div>
+        <div className="h-52 bg-black/[0.06] rounded-brutal animate-pulse" />
       </div>
     )
   }
 
+  if (error || !data) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-4">
+        <p className="font-mono text-sm text-mid-gray">Error al cargar el dashboard</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-5 py-2.5 border border-black/10 rounded-brutal bg-white
+            font-mono text-xs tracking-widest text-asphalt
+            hover:bg-asphalt hover:text-white transition-colors"
+        >
+          REINTENTAR
+        </button>
+      </div>
+    )
+  }
+
+  const { tomorrowBookings, tomorrowOccupation, forecast, revenue } = data
+  const allTomorrowBookings = [...tomorrowBookings.approved, ...tomorrowBookings.pending]
+  const avgTicket = revenue.bookingsThisMonth > 0
+    ? Math.round(revenue.thisMonth / revenue.bookingsThisMonth)
+    : 0
+
+  // Deltas
+  const monthDelta = pctDelta(revenue.thisMonth, revenue.prevMonth)
+  const weekDelta = pctDelta(revenue.thisWeek, revenue.prevWeek)
+  const todayDelta = pctDelta(revenue.today, revenue.yesterday)
+
+  // Forecast grid alignment
+  const firstDow = forecast[0]?.dayOfWeek ?? 1
+  const leadingEmpty = dayOfWeekToGridCol(firstDow)
+
+  // Executive summary
+  const summaryParts: string[] = []
+  if (allTomorrowBookings.length > 0) {
+    summaryParts.push(`${allTomorrowBookings.length} reserva${allTomorrowBookings.length === 1 ? '' : 's'} manana`)
+    if (tomorrowBookings.pending.length > 0) {
+      summaryParts.push(`${tomorrowBookings.pending.length} por confirmar`)
+    }
+  } else {
+    summaryParts.push('Sin reservas manana')
+  }
+  if (revenue.thisMonth > 0 && revenue.prevMonth > 0) {
+    const dir = monthDelta.direction === 'up' ? '+' : monthDelta.direction === 'down' ? '-' : ''
+    summaryParts.push(`mes va ${dir}${monthDelta.pct}% vs anterior`)
+  }
+
   return (
-    <div className="space-y-8 max-w-4xl">
-      {/* Header */}
-      <div>
-        <h1 className="font-grotesk text-xl font-bold text-asphalt tracking-tight">
-          Hoy &mdash; {formatTodayHeader()}
-        </h1>
-      </div>
-
-      {/* Stat cards */}
-      <div className="grid grid-cols-3 gap-3">
-        <StatCard
-          label="Reservas hoy"
-          value={todayBookings.length}
-        />
-        <StatCard
-          label="Sesiones hoy"
-          value={todaySessions.length}
-        />
-        <StatCard
-          label="Pendientes"
-          value={pendingBookings.length}
-          badge={pendingBookings.length > 0 ? 'amber' : undefined}
-        />
-      </div>
-
-      {/* Occupation bar */}
+    <div className="space-y-8 max-w-5xl">
+      {/* ── EXECUTIVE SUMMARY ── */}
       <div className="p-4 border border-black/10 rounded-brutal bg-white">
-        <div className="flex items-center justify-between mb-2">
-          <span className="font-mono text-[10px] tracking-widest text-mid-gray uppercase">
-            Ocupacion promedio hoy
-          </span>
-          <span
-            className={`font-mono text-sm font-bold ${
-              avgOccupation >= 80
-                ? 'text-rojo'
-                : avgOccupation >= 50
-                  ? 'text-amber-600'
-                  : 'text-mid-gray'
-            }`}
-          >
-            {avgOccupation}%
-          </span>
-        </div>
-        <div className="w-full h-2.5 bg-black/[0.06] rounded-full overflow-hidden">
-          <div
-            className={`h-2.5 rounded-full transition-all duration-500 ${
-              avgOccupation >= 80
-                ? 'bg-rojo'
-                : avgOccupation >= 50
-                  ? 'bg-amber-500'
-                  : 'bg-asphalt/30'
-            }`}
-            style={{ width: `${Math.min(100, avgOccupation)}%` }}
+        <p className="font-grotesk text-base text-asphalt">
+          {summaryParts.join('. ')}.
+        </p>
+      </div>
+
+      {/* ── LENS 1: FINANCIAL PULSE ── */}
+      <div>
+        <SectionLabel>Ingresos</SectionLabel>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <RevenueCard
+            label="Hoy"
+            value={formatPrice(revenue.today)}
+            delta={todayDelta}
+            deltaLabel="vs ayer"
+          />
+          <RevenueCard
+            label="Semana"
+            value={formatPrice(revenue.thisWeek)}
+            delta={weekDelta}
+            deltaLabel="vs sem ant"
+          />
+          <RevenueCard
+            label="Mes"
+            value={formatPrice(revenue.thisMonth)}
+            delta={monthDelta}
+            deltaLabel="vs mes ant"
+          />
+          <RevenueCard
+            label="Ticket promedio"
+            value={avgTicket > 0 ? formatPrice(avgTicket) : '\u2014'}
           />
         </div>
       </div>
 
-      {/* Upcoming sessions */}
+      {/* ── LENS 1.5: WEB TRAFFIC ── */}
+      {data.webTraffic && (
+        <div>
+          <SectionLabel>Trafico web</SectionLabel>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <RevenueCard label="Visitantes hoy" value={String(data.webTraffic.visitorsToday)} />
+            <RevenueCard label="Paginas hoy" value={String(data.webTraffic.pageviewsToday)} />
+            <RevenueCard label="Visitantes 3d" value={String(data.webTraffic.visitors3d)} />
+            <RevenueCard label="Paginas 3d" value={String(data.webTraffic.pageviews3d)} />
+          </div>
+          {data.webTraffic.topPages.length > 0 && (
+            <div className="mt-3 p-4 border border-black/10 rounded-brutal bg-white">
+              <span className="font-mono text-xs tracking-widest text-mid-gray uppercase block mb-2">
+                Paginas mas visitadas
+              </span>
+              <div className="space-y-1.5">
+                {data.webTraffic.topPages.map((p) => (
+                  <div key={p.page} className="flex items-center justify-between">
+                    <span className="font-mono text-sm text-asphalt truncate">{p.page}</span>
+                    <span className="font-mono text-xs text-mid-gray whitespace-nowrap ml-3">
+                      {p.views} vistas
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── LENS 2: OPERATIONAL READINESS — Tomorrow ── */}
       <div>
-        <h2 className="font-mono text-[10px] tracking-widest text-mid-gray uppercase mb-3">
-          Proximas sesiones
-        </h2>
+        <div className="flex items-baseline gap-3 mb-1">
+          <h1 className="font-grotesk text-lg font-bold text-asphalt tracking-tight uppercase">
+            Manana &mdash; {formatTomorrowHeader()}
+          </h1>
+        </div>
 
-        {upcomingSessions.length === 0 ? (
-          <p className="font-mono text-xs text-mid-gray py-4">
-            Sin sesiones programadas
-          </p>
+        <div className="flex items-center gap-3 mb-4">
+          <SectionLabel noMargin>
+            {allTomorrowBookings.length} {allTomorrowBookings.length === 1 ? 'reserva' : 'reservas'}
+          </SectionLabel>
+          {allTomorrowBookings.length > 0 && (
+            <OccupationBadge pct={tomorrowOccupation} />
+          )}
+        </div>
+
+        {allTomorrowBookings.length === 0 ? (
+          <div className="p-8 border border-black/10 rounded-brutal bg-white text-center">
+            <p className="font-mono text-sm text-mid-gray">Sin reservas para manana</p>
+          </div>
         ) : (
-          <div className="space-y-1">
-            {upcomingSessions.map((session) => {
-              const endTime = addMinutes(session.time, session.durationMinutes)
-              const serviceName = getServiceName(session)
-              const isToday = session.date === today
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Confirmed column */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
+                <span className="font-mono text-xs tracking-widest text-asphalt uppercase font-bold">
+                  Confirmadas ({tomorrowBookings.approved.length})
+                </span>
+              </div>
+              <div className="space-y-2">
+                {tomorrowBookings.approved.length === 0 ? (
+                  <EmptyColumn>Ninguna confirmada</EmptyColumn>
+                ) : (
+                  tomorrowBookings.approved.map((b) => (
+                    <BookingCard key={b.id} booking={b} variant="approved" />
+                  ))
+                )}
+              </div>
+            </div>
 
-              return (
-                <div
-                  key={session.id}
-                  className="flex items-center gap-4 p-3 border border-black/10 rounded-brutal bg-white"
-                >
-                  {/* Date + time */}
-                  <div className="flex-shrink-0 w-28">
-                    {!isToday && (
-                      <span className="font-mono text-[10px] text-mid-gray block">
-                        {session.date}
-                      </span>
-                    )}
-                    {isToday && (
-                      <span className="font-mono text-[10px] text-rojo font-bold block">
-                        HOY
-                      </span>
-                    )}
-                    <span className="font-mono text-sm font-bold text-asphalt">
-                      {session.time}
-                    </span>
-                    <span className="font-mono text-[10px] text-mid-gray">
-                      {' '}&ndash;{' '}{endTime}
-                    </span>
-                  </div>
-
-                  {/* Service + resource */}
-                  <div className="flex-1 min-w-0">
-                    <span className="font-grotesk text-sm font-medium text-asphalt block truncate">
-                      {serviceName}
-                    </span>
-                    {session.resource && (
-                      <span className="font-mono text-[10px] text-mid-gray">
-                        {session.resource.name}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Occupation */}
-                  <div className="flex-shrink-0">
-                    <OccupationBar
-                      bookedSpots={session.bookedSpots}
-                      maxSpots={session.maxSpots}
-                      occupationPct={session.occupationPct}
-                      size="sm"
-                    />
-                  </div>
-
-                  {/* Coach */}
-                  {session.coach && (
-                    <div className="flex-shrink-0 hidden sm:block">
-                      <span className="font-mono text-[10px] text-cement">
-                        {session.coach.name}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+            {/* Pending column */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+                <span className="font-mono text-xs tracking-widest text-asphalt uppercase font-bold">
+                  Por confirmar ({tomorrowBookings.pending.length})
+                </span>
+              </div>
+              <div className="space-y-2">
+                {tomorrowBookings.pending.length === 0 ? (
+                  <EmptyColumn>Ninguna pendiente</EmptyColumn>
+                ) : (
+                  tomorrowBookings.pending.map((b) => (
+                    <BookingCard key={b.id} booking={b} variant="pending" />
+                  ))
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>
 
+      {/* ── LENS 3: DEMAND SIGNAL — 28-day forecast ── */}
+      <div>
+        <SectionLabel>Ocupacion &mdash; Proximas 4 semanas</SectionLabel>
+
+        <div className="p-4 sm:p-5 border border-black/10 rounded-brutal bg-white">
+          {/* Day headers */}
+          <div className="grid grid-cols-7 gap-1.5 mb-1.5">
+            {DAY_HEADERS.map((d) => (
+              <div key={d} className="text-center font-mono text-[11px] font-bold text-mid-gray tracking-wide">
+                {d}
+              </div>
+            ))}
+          </div>
+
+          {/* Grid cells */}
+          <div className="grid grid-cols-7 gap-1.5">
+            {[...Array(leadingEmpty)].map((_, i) => (
+              <div key={`empty-${i}`} className="h-12 sm:h-14" />
+            ))}
+
+            {forecast.map((day) => {
+              const dayNum = parseInt(day.date.split('-')[2], 10)
+              const hasCap = day.totalCapacity > 0
+              const pct = day.occupationPct
+              const bg = !hasCap
+                ? 'bg-black/[0.03]'
+                : pct >= 100
+                  ? 'bg-rojo/15'
+                  : pct >= 80
+                    ? 'bg-amber-200'
+                    : pct >= 50
+                      ? 'bg-amber-50'
+                      : pct > 0
+                        ? 'bg-green-50'
+                        : 'bg-white'
+
+              return (
+                <div
+                  key={day.date}
+                  className={`h-12 sm:h-14 flex flex-col items-center justify-center rounded-brutal border border-black/[0.06] ${bg}`}
+                  title={`${day.date}: ${day.bookedSeats}/${day.totalCapacity} spots`}
+                >
+                  <span className="font-mono text-sm font-bold text-asphalt leading-none">
+                    {dayNum}
+                  </span>
+                  <span className="font-mono text-[11px] text-mid-gray leading-none mt-0.5">
+                    {hasCap ? `${pct}%` : '\u2014'}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Legend */}
+          <div className="flex items-center gap-4 mt-4 flex-wrap">
+            <LegendItem color="bg-black/[0.06]" label="Sin servicio" />
+            <LegendItem color="bg-white border border-black/[0.08]" label="0%" />
+            <LegendItem color="bg-green-100" label="1-49%" />
+            <LegendItem color="bg-amber-100" label="50-79%" />
+            <LegendItem color="bg-amber-300" label="80-99%" />
+            <LegendItem color="bg-rojo/20" label="100%+" />
+          </div>
+        </div>
+      </div>
+
       {/* Quick actions */}
       <div>
-        <h2 className="font-mono text-[10px] tracking-widest text-mid-gray uppercase mb-3">
-          Acciones rapidas
-        </h2>
+        <SectionLabel>Acciones rapidas</SectionLabel>
         <div className="flex flex-wrap gap-2">
           <QuickAction href="/admin/schedules" label="Horarios" />
-          <QuickAction href="/admin/bookings" label="Ver reservas" />
+          <QuickAction href="/admin/bookings" label="Reservas" />
           <QuickAction href="/admin/services" label="Servicios" />
         </div>
       </div>
@@ -292,28 +392,141 @@ export default function AdminDashboard() {
 
 // --- Sub-components ---
 
-function StatCard({
-  label,
-  value,
-  badge,
-}: {
+function SectionLabel({ children, noMargin }: { children: React.ReactNode; noMargin?: boolean }) {
+  return (
+    <h2 className={`font-mono text-xs tracking-widest text-mid-gray uppercase ${noMargin ? '' : 'mb-3'}`}>
+      {children}
+    </h2>
+  )
+}
+
+function OccupationBadge({ pct }: { pct: number }) {
+  const style =
+    pct >= 80
+      ? 'bg-rojo/10 text-rojo'
+      : pct >= 50
+        ? 'bg-amber-100 text-amber-700'
+        : 'bg-black/[0.06] text-mid-gray'
+
+  return (
+    <span className={`font-mono text-xs font-bold px-2.5 py-1 rounded-brutal ${style}`}>
+      {pct}% ocupado
+    </span>
+  )
+}
+
+function EmptyColumn({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="font-mono text-xs text-mid-gray py-4 px-4 border border-dashed border-black/10 rounded-brutal text-center">
+      {children}
+    </p>
+  )
+}
+
+function DeltaBadge({ delta, label }: { delta: { pct: number; direction: 'up' | 'down' | 'flat' }; label: string }) {
+  if (delta.direction === 'flat') {
+    return (
+      <span className="font-mono text-[11px] text-cement">
+        = {label}
+      </span>
+    )
+  }
+
+  const isUp = delta.direction === 'up'
+  const color = isUp ? 'text-green-700' : 'text-rojo'
+  const arrow = isUp ? '\u2191' : '\u2193'
+
+  return (
+    <span className={`font-mono text-[11px] font-bold ${color}`}>
+      {arrow}{delta.pct}% <span className="font-normal text-cement">{label}</span>
+    </span>
+  )
+}
+
+function BookingCard({ booking, variant }: { booking: Booking; variant: 'approved' | 'pending' }) {
+  const endTime = booking.time
+    ? addMinutes(booking.time, booking.durationMinutes)
+    : ''
+  const borderColor = variant === 'approved' ? 'border-l-green-500' : 'border-l-amber-500'
+  const isPending = variant === 'pending'
+  const ago = booking.createdAt ? timeAgo(booking.createdAt) : ''
+
+  return (
+    <div className={`p-4 border border-black/10 rounded-brutal bg-white border-l-[3px] ${borderColor}`}>
+      {/* Name + seats */}
+      <div className="flex items-start justify-between gap-2 mb-1">
+        <span className="font-grotesk text-base font-bold text-asphalt truncate">
+          {booking.name}
+        </span>
+        <span className="font-mono text-xs text-mid-gray whitespace-nowrap">
+          {booking.seats} {booking.seats === 1 ? 'persona' : 'personas'}
+        </span>
+      </div>
+
+      {/* Service + urgency */}
+      <div className="flex items-center gap-2 mb-3">
+        <span className="font-mono text-xs text-cement">
+          {booking.serviceName}
+        </span>
+        {isPending && ago && (
+          <span className="font-mono text-[11px] font-bold text-amber-600">
+            {ago}
+          </span>
+        )}
+      </div>
+
+      {/* Time + WhatsApp */}
+      <div className="flex items-center justify-between">
+        {booking.time ? (
+          <span className="font-mono text-sm font-bold text-asphalt">
+            {booking.time} &ndash; {endTime}
+          </span>
+        ) : (
+          <span className="font-mono text-sm text-mid-gray">&mdash;</span>
+        )}
+        <a
+          href={waLink(booking.phone)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center px-3 py-1.5 bg-green-600 text-white
+            font-mono text-[11px] tracking-widest rounded-brutal
+            hover:bg-green-700 transition-colors"
+        >
+          CONTACTAR
+        </a>
+      </div>
+    </div>
+  )
+}
+
+function RevenueCard({ label, value, delta, deltaLabel }: {
   label: string
-  value: number
-  badge?: 'amber'
+  value: string
+  delta?: { pct: number; direction: 'up' | 'down' | 'flat' }
+  deltaLabel?: string
 }) {
   return (
     <div className="p-4 border border-black/10 rounded-brutal bg-white">
-      <span className="font-mono text-[10px] tracking-widest text-mid-gray uppercase block mb-1">
+      <span className="font-mono text-xs tracking-widest text-mid-gray uppercase block mb-1">
         {label}
       </span>
-      <div className="flex items-center gap-2">
-        <span className="font-grotesk text-2xl font-bold text-asphalt">
-          {value}
-        </span>
-        {badge === 'amber' && (
-          <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-        )}
-      </div>
+      <span className="font-grotesk text-2xl font-bold text-asphalt block">
+        {value}
+      </span>
+      {delta && deltaLabel && (
+        <div className="mt-1.5">
+          <DeltaBadge delta={delta} label={deltaLabel} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function LegendItem({ color, label }: { color: string; label: string }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className={`w-3.5 h-3.5 rounded-brutal ${color}`} />
+      <span className="font-mono text-[11px] text-mid-gray">{label}</span>
     </div>
   )
 }

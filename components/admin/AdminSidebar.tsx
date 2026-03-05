@@ -67,6 +67,17 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
+  {
+    label: 'Clientes',
+    href: '/admin/crm',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <path d="M15 15.75v-1.5a3 3 0 00-3-3H6a3 3 0 00-3 3v1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="9" cy="5.25" r="3" stroke="currentColor" strokeWidth="1.4" />
+        <path d="M16.5 15.75v-1.5a2.25 2.25 0 00-1.5-2.12M12.75 2.55a2.25 2.25 0 010 4.36" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
 ]
 
 export function AdminSidebar() {

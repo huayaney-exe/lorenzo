@@ -58,6 +58,8 @@ export function ServiceCard({ service, lang, index }: Props) {
       ? `S/${service.pricePen.toLocaleString('es-PE')}`
       : `S/${service.pricePen}`
 
+  const isUnavailable = !service.hasAvailability || isFull
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -67,8 +69,8 @@ export function ServiceCard({ service, lang, index }: Props) {
         duration: 0.45,
         ease: [0.25, 0.1, 0.25, 1],
       }}
-      className="bg-white border border-black/[0.08] rounded-brutal p-5 flex flex-col gap-3
-                 hover:border-black/15 transition-colors duration-200"
+      className={`bg-white border border-black/[0.08] rounded-brutal p-5 flex flex-col gap-3
+                 transition-colors duration-200 ${isUnavailable ? 'opacity-50' : 'hover:border-black/15'}`}
     >
       {/* Type badge */}
       <div className="flex items-center gap-2">
@@ -124,7 +126,11 @@ export function ServiceCard({ service, lang, index }: Props) {
       )}
 
       {/* CTA */}
-      {service.hasAvailability && !isFull ? (
+      {isUnavailable ? (
+        <p className="text-center font-mono text-xs tracking-widest text-cement uppercase mt-1 py-3.5">
+          {t.services.noAvailability}
+        </p>
+      ) : (
         <Link
           href={`/${lang}/book/${service.slug}`}
           className="block w-full text-center font-grotesk font-bold text-sm tracking-display
@@ -134,16 +140,6 @@ export function ServiceCard({ service, lang, index }: Props) {
         >
           {t.services.choose}
         </Link>
-      ) : (
-        <button
-          disabled
-          aria-disabled="true"
-          className="block w-full text-center font-grotesk font-bold text-sm tracking-display
-                     bg-rojo text-white py-3.5 rounded-brutal mt-1
-                     opacity-30 cursor-not-allowed"
-        >
-          {t.services.choose}
-        </button>
       )}
     </motion.div>
   )

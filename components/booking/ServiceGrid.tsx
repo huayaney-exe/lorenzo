@@ -43,7 +43,14 @@ function groupByType(services: ServiceGridService[]): Map<string, ServiceGridSer
 
   for (const type of order) {
     const items = services.filter((s) => s.type === type)
-    if (items.length > 0) groups.set(type, items)
+    if (items.length > 0) {
+      items.sort((a, b) => {
+        const aAvail = a.hasAvailability && !(a.nextAvailable && a.nextAvailable.occupationPct >= 100)
+        const bAvail = b.hasAvailability && !(b.nextAvailable && b.nextAvailable.occupationPct >= 100)
+        return aAvail === bAvail ? 0 : aAvail ? -1 : 1
+      })
+      groups.set(type, items)
+    }
   }
 
   // Catch any types not in the predefined order

@@ -12,6 +12,12 @@ interface ServiceResource {
   capacity: number
 }
 
+interface ScheduleEntry {
+  dayOfWeek: number
+  startTime: string
+  endTime: string
+}
+
 interface ServiceEntry {
   id: string
   name: { es: string; en: string }
@@ -25,8 +31,37 @@ interface ServiceEntry {
   resource: ServiceResource | null
 }
 
+const DAY_ABBR = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
+
+function formatSchedule(schedules: ScheduleEntry[]): string {
+  if (schedules.length === 0) return ''
+  // Group consecutive days with same time range
+  const groups: Array<{ days: number[]; time: string }> = []
+  for (const s of schedules) {
+    const time = `${s.startTime}-${s.endTime}`
+    const last = groups[groups.length - 1]
+    if (last && last.time === time && last.days[last.days.length - 1] === s.dayOfWeek - 1) {
+      last.days.push(s.dayOfWeek)
+    } else if (last && last.time === time && s.dayOfWeek === 0 && last.days.includes(6)) {
+      last.days.push(s.dayOfWeek)
+    } else {
+      groups.push({ days: [s.dayOfWeek], time })
+    }
+  }
+  return groups
+    .map((g) => {
+      const dayStr =
+        g.days.length === 1
+          ? DAY_ABBR[g.days[0]]
+          : `${DAY_ABBR[g.days[0]]}-${DAY_ABBR[g.days[g.days.length - 1]]}`
+      return `${dayStr} ${g.time}`
+    })
+    .join(' · ')
+}
+
 export default function ServicesListPage() {
   const [services, setServices] = useState<ServiceEntry[]>([])
+  const [schedulesByService, setSchedulesByService] = useState<Record<string, ScheduleEntry[]>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -40,6 +75,7 @@ export default function ServicesListPage() {
       .then((r) => r.json())
       .then((data) => {
         setServices(data.services)
+        setSchedulesByService(data.schedulesByService ?? {})
         setLoading(false)
       })
       .catch(() => {
@@ -272,6 +308,19 @@ export default function ServicesListPage() {
                   max {svc.maxSpots}
                 </span>
               </div>
+
+              {/* Schedule */}
+              {(schedulesByService[svc.id] ?? []).length > 0 && (
+                <div className="mt-1.5 flex items-center gap-1.5">
+                  <svg width="12" height="12" viewBox="0 0 18 18" fill="none" className="text-cement flex-shrink-0">
+                    <circle cx="9" cy="9" r="6.75" stroke="currentColor" strokeWidth="1.4" />
+                    <path d="M9 4.5V9l3 1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span className="font-mono text-[10px] text-cement">
+                    {formatSchedule(schedulesByService[svc.id])}
+                  </span>
+                </div>
+              )}
             </div>
           ))}
         </div>

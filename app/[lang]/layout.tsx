@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { LangProvider } from '@/lib/i18n'
 import { locales, type Lang } from '@/lib/i18n-config'
+import { PostHogProvider } from '@/components/PostHogProvider'
 
 export function generateStaticParams() {
   return locales.map((lang) => ({ lang }))
@@ -19,5 +20,9 @@ export default async function LangLayout({
     notFound()
   }
 
-  return <LangProvider lang={lang as Lang}>{children}</LangProvider>
+  return (
+    <PostHogProvider>
+      <LangProvider lang={lang as Lang}>{children}</LangProvider>
+    </PostHogProvider>
+  )
 }

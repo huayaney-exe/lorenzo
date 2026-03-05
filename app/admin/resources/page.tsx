@@ -9,6 +9,12 @@ interface Resource {
   active: boolean
 }
 
+interface RelatedService {
+  id: string
+  name: string
+  type: string
+}
+
 interface FormData {
   name: string
   capacity: number
@@ -18,6 +24,7 @@ const EMPTY_FORM: FormData = { name: '', capacity: 1 }
 
 export default function ResourcesPage() {
   const [resources, setResources] = useState<Resource[]>([])
+  const [servicesByResource, setServicesByResource] = useState<Record<string, RelatedService[]>>({})
   const [loading, setLoading] = useState(true)
 
   // null = closed, 'new' = creating, string = editing that id
@@ -31,6 +38,7 @@ export default function ResourcesPage() {
     const res = await fetch('/api/admin/resources')
     const data = await res.json()
     setResources(data.resources)
+    setServicesByResource(data.servicesByResource ?? {})
     setLoading(false)
   }
 
@@ -267,12 +275,26 @@ export default function ResourcesPage() {
                 </button>
 
                 <div>
-                  <span className="font-grotesk font-bold text-sm text-asphalt">
-                    {resource.name}
-                  </span>
-                  <span className="ml-3 font-mono text-[10px] text-mid-gray">
-                    {resource.capacity} {resource.capacity === 1 ? 'persona' : 'personas'}
-                  </span>
+                  <div className="flex items-center">
+                    <span className="font-grotesk font-bold text-sm text-asphalt">
+                      {resource.name}
+                    </span>
+                    <span className="ml-3 font-mono text-[10px] text-mid-gray">
+                      {resource.capacity} {resource.capacity === 1 ? 'persona' : 'personas'}
+                    </span>
+                  </div>
+                  {(servicesByResource[resource.id] ?? []).length > 0 && (
+                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                      {servicesByResource[resource.id].map((svc) => (
+                        <span
+                          key={svc.id}
+                          className="font-mono text-[10px] text-cement bg-bone px-1.5 py-0.5 rounded-brutal"
+                        >
+                          {svc.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 

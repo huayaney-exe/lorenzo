@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getResources, createResource } from '@/lib/booking-data'
+import { getResources, getServices, createResource } from '@/lib/booking-data'
 
 export async function GET() {
-  const resources = await getResources()
-  return NextResponse.json({ resources })
+  const [resources, services] = await Promise.all([getResources(), getServices()])
+  const servicesByResource: Record<string, Array<{ id: string; name: string; type: string }>> = {}
+  for (const svc of services) {
+    if (svc.resourceId) {
+      if (!servicesByResource[svc.resourceId]) servicesByResource[svc.resourceId] = []
+      servicesByResource[svc.resourceId].push({ id: svc.id, name: svc.name.es, type: svc.type })
+    }
+  }
+  return NextResponse.json({ resources, servicesByResource })
 }
 
 export async function POST(req: NextRequest) {

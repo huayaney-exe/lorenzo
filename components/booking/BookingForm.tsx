@@ -206,52 +206,50 @@ export function BookingForm({ session, service, onSubmit, submitting }: Props) {
       </div>
 
       {/* Total + Submit */}
-      <div className="pt-5 border-t border-black/[0.06]">
-        <div className="flex items-end justify-between">
-          <div>
-            <span className="block font-mono text-xs tracking-widest text-mid-gray uppercase">
-              {t.book.form.total}
-            </span>
-            <div className="flex items-baseline gap-1.5 mt-1">
-              <AnimatePresence mode="wait">
-                <motion.span
-                  key={total}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-                  className="font-grotesk font-bold text-3xl text-asphalt leading-none"
-                >
-                  {formatPrice(total)}
-                </motion.span>
-              </AnimatePresence>
-              {!isFlat && seats > 1 && (
-                <span className="font-mono text-[10px] text-mid-gray">
-                  {seats} × {formatPrice(session.pricePen)}
-                </span>
-              )}
-              {isFlat && (
-                <span className="font-mono text-[10px] text-mid-gray">
-                  {lang === 'es' ? 'grupo' : 'group'}
-                </span>
-              )}
-            </div>
+      <div className="pt-5 border-t border-black/[0.06] space-y-4">
+        <div>
+          <span className="block font-mono text-xs tracking-widest text-mid-gray uppercase">
+            {t.book.form.total}
+          </span>
+          <div className="flex items-baseline gap-1.5 mt-1">
+            <AnimatePresence mode="wait">
+              <motion.span
+                key={total}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+                className="font-grotesk font-bold text-3xl text-asphalt leading-none"
+              >
+                {formatPrice(total)}
+              </motion.span>
+            </AnimatePresence>
+            {!isFlat && seats > 1 && (
+              <span className="font-mono text-[10px] text-mid-gray">
+                {seats} × {formatPrice(session.pricePen)}
+              </span>
+            )}
+            {isFlat && (
+              <span className="font-mono text-[10px] text-mid-gray">
+                {lang === 'es' ? 'grupo' : 'group'}
+              </span>
+            )}
           </div>
-
-          <motion.button
-            type="submit"
-            disabled={submitting || !name || !phone}
-            className="font-grotesk font-bold text-sm tracking-display
-                       bg-rojo text-white px-7 py-4 rounded-brutal
-                       disabled:opacity-30 disabled:cursor-not-allowed
-                       focus-visible:outline-rojo focus-visible:outline-2 focus-visible:outline-offset-2"
-            whileHover={!submitting && name && phone ? { scale: 0.975, backgroundColor: '#7A0600' } : undefined}
-            whileTap={!submitting && name && phone ? { scale: 0.95 } : undefined}
-            transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-          >
-            {submitting ? '...' : t.book.form.submit}
-          </motion.button>
         </div>
+
+        <motion.button
+          type="submit"
+          disabled={submitting || !name || !phone}
+          className="w-full font-grotesk font-bold text-sm tracking-display
+                     bg-rojo text-white py-4 rounded-brutal
+                     disabled:opacity-30 disabled:cursor-not-allowed
+                     focus-visible:outline-rojo focus-visible:outline-2 focus-visible:outline-offset-2"
+          whileHover={!submitting && name && phone ? { scale: 0.985, backgroundColor: '#7A0600' } : undefined}
+          whileTap={!submitting && name && phone ? { scale: 0.975 } : undefined}
+          transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+        >
+          {submitting ? '...' : t.book.form.submit}
+        </motion.button>
       </div>
     </motion.form>
   )

@@ -1,150 +1,131 @@
-# Lorenzo Admin — QA Test Checklist
-
-Run through each section after deployment. Mark each item pass/fail.
-
----
+# Lorenzo — QA Test Guide
 
 ## Prerequisites
 
-- [ ] `ADMIN_API_KEY` is set in Vercel environment variables
-- [ ] `supabase-add-slugs.sql` has been run in Supabase SQL Editor
-- [ ] Latest code is deployed (check commit hash matches)
+Before testing, ensure:
+
+- `ADMIN_API_KEY` is set in Vercel environment variables
+- `supabase-add-slugs.sql` has been run
+- `supabase-missing-objects.sql` has been run
+- Latest code is deployed
 
 ---
 
-## 1. Authentication
+## A. Customer Booking Flow
 
-| # | Test | Steps | Expected |
-|---|------|-------|----------|
-| 1.1 | Login page loads | Go to `/admin/login` | See "LORENZO ADMIN" + password input |
-| 1.2 | Wrong password rejected | Enter wrong key, click ENTRAR | "Clave incorrecta" error shown |
-| 1.3 | Correct password works | Enter `Lorenzo90`, click ENTRAR | Redirected to `/admin` with sidebar |
-| 1.4 | Sidebar visible | After login | Left sidebar: LORENZO ADMIN badge, 6 nav items |
-| 1.5 | Unauthenticated redirect | Open `/admin` in incognito | Redirected to `/admin/login` |
+### A1. Landing Page
+- [ ] `/es` loads with hero video, service cards, photo grid, footer
+- [ ] `/en` loads with English text
+- [ ] Language toggle switches between ES/EN
+- [ ] "RESERVAR" button navigates to `/es/book`
 
----
+### A2. Service Catalog
+- [ ] `/es/book` shows all active services from database
+- [ ] Each card shows: name, type badge, price, duration, resource name
+- [ ] "Elegir" button links to service detail page
+- [ ] Services without availability show disabled button
 
-## 2. Sidebar Navigation
+### A3. Service Detail + Calendar
+- [ ] Click a service card — URL uses slug (e.g. `/es/book/bay-paddle`)
+- [ ] Month calendar displays with available dates highlighted
+- [ ] Green/amber/red dots indicate occupation level
+- [ ] Days without availability are grayed out
+- [ ] Month navigation arrows work (prev/next)
+- [ ] Invalid slug (e.g. `/es/book/nonexistent`) shows "Servicio no encontrado"
 
-| # | Tab | URL | Expected |
-|---|-----|-----|----------|
-| 2.1 | Inicio | `/admin` | Dashboard with stats, occupation bar, upcoming sessions, quick actions |
-| 2.2 | Recursos | `/admin/resources` | List of resources (Lancha 1, SUP Boards, etc.) |
-| 2.3 | Servicios | `/admin/services` | Service list with type badges, prices, edit/create buttons |
-| 2.4 | Horarios | `/admin/schedules` | Service dropdown + weekly schedule editor with toggles |
-| 2.5 | Coaches | `/admin/coaches` | Coach list with name, phone, role |
-| 2.6 | Reservas | `/admin/bookings` | Booking list with status, WhatsApp link |
-| 2.7 | Active tab highlight | Click each tab | Active tab highlighted with red icon, bone background |
-| 2.8 | Mobile nav | Resize to mobile width | Top bar with horizontal scrollable tabs replaces sidebar |
+### A4. Time Selection
+- [ ] Selecting a date shows available time slots
+- [ ] Each slot shows time range, available spots, occupation bar
+- [ ] Back button returns to calendar
+- [ ] Full slots are disabled
 
----
+### A5. Booking Form
+- [ ] Name field: focuses cleanly, no red outline
+- [ ] Phone field: country code selector + input, no red outline
+- [ ] Seats selector: buttons 1 through max available
+- [ ] **Per-person pricing**: total updates as seats change (e.g. 3 seats x S/130 = S/390)
+- [ ] **Flat pricing**: total stays fixed regardless of seats
+- [ ] CONTINUAR button is full-width, not cropped
 
-## 3. Recursos (Resources)
-
-| # | Test | Steps | Expected |
-|---|------|-------|----------|
-| 3.1 | List loads | Go to `/admin/resources` | See all resources with name + capacity |
-| 3.2 | Create resource | Click create, fill name + capacity, submit | New resource appears in list |
-| 3.3 | Edit resource | Click edit on existing, change name, save | Name updated |
-| 3.4 | Delete resource | Click delete, confirm | Resource removed from list |
-
----
-
-## 4. Servicios (Services)
-
-| # | Test | Steps | Expected |
-|---|------|-------|----------|
-| 4.1 | List loads | Go to `/admin/services` | All services with type badge, price, duration |
-| 4.2 | Create service | `/admin/services/new` — fill all fields, submit | New service in list |
-| 4.3 | Edit service | Click edit on existing service | Pre-filled form, save updates service |
-| 4.4 | Type badges | Check list | Each type shows colored badge (paddle=blue, boat=teal, etc.) |
-| 4.5 | Slug auto-generated | Create service with name "Test Service" | Slug becomes `test-service` |
+### A6. Confirmation + Submit
+- [ ] Review card shows: service, date, time, seats, contact, price breakdown
+- [ ] Per-person: shows "S/130 x 3 = S/390"
+- [ ] "Confirmar por WhatsApp" submits booking
+- [ ] Success page shows with booking summary
+- [ ] WhatsApp opens with pre-filled message
+- [ ] Failure page shows if something goes wrong
 
 ---
 
-## 5. Horarios (Schedules)
+## B. Admin Panel
 
-| # | Test | Steps | Expected |
-|---|------|-------|----------|
-| 5.1 | Service selector | Go to `/admin/schedules` | Dropdown with all services |
-| 5.2 | Weekly view | Select a service | 7 day rows (Dom-Sab) with toggle + time inputs |
-| 5.3 | Enable day | Toggle a disabled day ON | Time inputs appear (start/end) |
-| 5.4 | Set time window | Set Lun 07:00 - 17:00, save | Schedule saved, reloads correctly |
-| 5.5 | Add window | Click "+ VENTANA" | Second time window row added |
-| 5.6 | Copy to days | Click "COPIAR A..." on a day | Options to copy schedule to other days |
-| 5.7 | Disable day | Toggle an enabled day OFF | Time inputs hidden, shows "No disponible" |
+### B1. Authentication
+- [ ] `/admin/login` shows login form
+- [ ] Wrong password shows "Clave incorrecta"
+- [ ] Correct password redirects to `/admin` with sidebar
+- [ ] Unauthenticated access to `/admin` redirects to login
+- [ ] Sidebar shows: LORENZO ADMIN, Inicio, Recursos, Servicios, Horarios, Coaches, Reservas
 
----
+### B2. Dashboard (Inicio)
+- [ ] Date header in Spanish
+- [ ] 3 stat cards: Reservas hoy, Sesiones hoy, Pendientes
+- [ ] Occupation bar with percentage
+- [ ] Upcoming sessions list
+- [ ] Quick action buttons navigate correctly
 
-## 6. Coaches
+### B3. Recursos
+- [ ] List shows all resources with name + capacity
+- [ ] Create: add new resource with name + capacity
+- [ ] Edit: change resource name/capacity
+- [ ] Delete: works for resources without services
+- [ ] Delete: shows error "tiene servicios asociados" if services reference it
 
-| # | Test | Steps | Expected |
-|---|------|-------|----------|
-| 6.1 | List loads | Go to `/admin/coaches` | Coach list with name, phone, role |
-| 6.2 | Create coach | Fill name, phone, role, submit | New coach in list |
-| 6.3 | Edit coach | Click edit, change phone, save | Phone updated |
-| 6.4 | Delete coach | Click delete, confirm | Coach removed |
+### B4. Servicios
+- [ ] List shows services with type badge, price, duration, active dot
+- [ ] Responsive: stacks name/actions on mobile
+- [ ] Create: `/admin/services/new` with all fields
+- [ ] Edit: pre-filled form, saves changes
+- [ ] Toggle active: eye icon toggles active/inactive state
+- [ ] Delete: works for services without bookings
+- [ ] Delete: shows error "tiene reservas activas" if bookings exist
 
----
+### B5. Horarios
+- [ ] Service dropdown lists all services
+- [ ] Selecting service shows 7-day weekly schedule
+- [ ] Toggle day on/off with time inputs
+- [ ] Add multiple time windows per day ("+ VENTANA")
+- [ ] "COPIAR A..." copies schedule to other days
+- [ ] Save persists changes
 
-## 7. Reservas (Bookings)
+### B6. Coaches
+- [ ] List shows coaches with name, phone, role
+- [ ] Create/Edit/Delete work
 
-| # | Test | Steps | Expected |
-|---|------|-------|----------|
-| 7.1 | List loads | Go to `/admin/bookings` | Booking list (may be empty) |
-| 7.2 | Status badge | Check booking entries | Colored badge: pending=amber, confirmed=green |
-| 7.3 | WhatsApp link | Click WhatsApp icon on a booking | Opens WhatsApp with customer phone |
-| 7.4 | Update status | Change booking status | Status badge updates |
-
----
-
-## 8. Dashboard (Inicio)
-
-| # | Test | Steps | Expected |
-|---|------|-------|----------|
-| 8.1 | Date header | Go to `/admin` | "Hoy — [weekday], [date]" in Spanish |
-| 8.2 | Stat cards | Check dashboard | 3 cards: Reservas hoy, Sesiones hoy, Pendientes |
-| 8.3 | Occupation bar | Check dashboard | Progress bar with percentage |
-| 8.4 | Upcoming sessions | Check dashboard | Next sessions with time, service name, occupation |
-| 8.5 | Quick actions | Check bottom | Buttons: HORARIOS, VER RESERVAS, SERVICIOS |
-| 8.6 | Quick action links | Click each button | Navigates to correct admin page |
-
----
-
-## 9. Customer Booking Flow (Frontend)
-
-| # | Test | Steps | Expected |
-|---|------|-------|----------|
-| 9.1 | Landing page | Go to `/es` | Hero + discipline section + photo grid + footer |
-| 9.2 | Service cards | Go to `/es/book` | All active services with price, duration, availability |
-| 9.3 | Service detail | Click any service card | Service page loads with name, price, booking calendar |
-| 9.4 | Slug routing | Click "Paddle Bahia" card | URL is `/es/book/bay-paddle`, page loads correctly |
-| 9.5 | Slug routing 2 | Click "El Camotal" card | URL is `/es/book/el-camotal-anchor`, page loads |
-| 9.6 | Calendar | On service detail | Available dates shown, selectable |
-| 9.7 | Time slots | Select a date | Time slots shown with availability |
-| 9.8 | Booking form | Select a time slot | Name, phone, seats form appears |
-| 9.9 | Submit booking | Fill form, submit | Redirects to success page |
-| 9.10 | English version | Go to `/en/book` | All text in English |
-| 9.11 | Language toggle | Click ES/EN toggle | Switches language, preserves page |
+### B7. Reservas
+- [ ] List shows all bookings with name, phone, seats, status, total
+- [ ] Status badge: pending=amber, approved=green
+- [ ] Approve booking changes status
+- [ ] WhatsApp link opens with customer phone
 
 ---
 
-## 10. Edge Cases
+## C. Edge Cases
 
-| # | Test | Steps | Expected |
-|---|------|-------|----------|
-| 10.1 | Invalid slug | Go to `/es/book/nonexistent` | "Servicio no encontrado" + back link |
-| 10.2 | No availability | Service with no schedules | "Elegir" button disabled |
-| 10.3 | Session expired | Delete admin-session cookie, refresh `/admin` | Redirected to login |
-| 10.4 | Root URL redirect | Go to `casalorenzo.vercel.app` | Redirected to `/es` |
+- [ ] Root URL `casalorenzo.vercel.app` redirects to `/es`
+- [ ] `www.` prefix redirects to non-www
+- [ ] Double-booking prevention: two users booking last spot simultaneously
+- [ ] Session expired: delete cookie, refresh admin — redirects to login
+- [ ] Mobile: sidebar becomes horizontal tab bar
+- [ ] Mobile: booking form fully usable, no cropped elements
 
 ---
 
-## Deployment Checklist
+## D. Database Health
 
-Before marking complete:
-
-1. Run `supabase-add-slugs.sql` in Supabase SQL Editor
-2. Add to Vercel env vars: `ADMIN_API_KEY=Lorenzo90`
-3. Push latest code and verify deployment
-4. Run through sections 1-10 above on production
+Run `supabase-validate-setup.sql` to verify:
+- [ ] All 6 tables exist
+- [ ] `sessions_with_availability` view exists
+- [ ] `create_booking_atomic` function exists
+- [ ] `check_resource_overlap` function exists
+- [ ] `slug` column exists on services
+- [ ] Row counts are reasonable

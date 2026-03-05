@@ -156,6 +156,24 @@ export function ConfirmStep({ session, service, booking, addons, onBack, lang }:
 
         {/* Details section */}
         <div className="px-5 py-4 space-y-3">
+          {/* Date & Time */}
+          <div className="flex justify-between items-baseline">
+            <span className="font-mono text-xs tracking-widest text-mid-gray uppercase">
+              {lang === 'es' ? 'Fecha' : 'Date'}
+            </span>
+            <span className="font-grotesk text-sm text-asphalt capitalize">
+              {formatDateFull(session.date, lang)}
+            </span>
+          </div>
+          <div className="flex justify-between items-baseline">
+            <span className="font-mono text-xs tracking-widest text-mid-gray uppercase">
+              {lang === 'es' ? 'Hora' : 'Time'}
+            </span>
+            <span className="font-mono text-sm text-asphalt">
+              {session.time} — {endTime}
+            </span>
+          </div>
+
           {/* Seats */}
           <div className="flex justify-between items-baseline">
             <span className="font-mono text-xs tracking-widest text-mid-gray uppercase">

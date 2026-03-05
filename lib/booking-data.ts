@@ -386,6 +386,15 @@ export async function updateResource(id: string, data: Partial<Resource>): Promi
 }
 
 export async function deleteResource(id: string): Promise<void> {
+  // Check if any services use this resource
+  const { data: services } = await supabase
+    .from('services')
+    .select('id')
+    .eq('resource_id', id)
+    .limit(1)
+  if (services && services.length > 0) {
+    throw new Error('No se puede eliminar: tiene servicios asociados')
+  }
   const { error } = await supabase.from('resources').delete().eq('id', id)
   if (error) throw new Error(error.message)
 }
@@ -517,7 +526,22 @@ export async function updateService(id: string, data: Partial<Service>): Promise
 }
 
 export async function deleteService(id: string): Promise<void> {
-  // Schedules cascade-delete via FK. Sessions restrict.
+  // Check for sessions with active bookings
+  const { data: sessionsWithBookings } = await supabase
+    .from('sessions')
+    .select('id, bookings(id)')
+    .eq('service_id', id)
+
+  const hasActiveBookings = (sessionsWithBookings ?? []).some(
+    (s: any) => s.bookings && s.bookings.length > 0
+  )
+  if (hasActiveBookings) {
+    throw new Error('No se puede eliminar: tiene reservas activas')
+  }
+
+  // Delete orphan sessions (no bookings), then schedules, then service
+  await supabase.from('sessions').delete().eq('service_id', id)
+  await supabase.from('service_schedules').delete().eq('service_id', id)
   const { error } = await supabase.from('services').delete().eq('id', id)
   if (error) throw new Error(error.message)
 }

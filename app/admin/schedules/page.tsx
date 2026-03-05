@@ -56,8 +56,8 @@ export default function SchedulesPage() {
           <select
             value={selectedId}
             onChange={(e) => setSelectedId(e.target.value)}
-            className="w-full max-w-md px-3 py-2 border border-black/10 rounded-brutal bg-bone
-              font-grotesk text-sm text-asphalt
+            className="w-full max-w-md px-3 py-2 border border-black/10 rounded-brutal bg-white
+              font-grotesk text-sm text-asphalt cursor-pointer
               focus:outline-none focus:border-asphalt/30 transition-colors"
           >
             <option value="">Selecciona un servicio</option>

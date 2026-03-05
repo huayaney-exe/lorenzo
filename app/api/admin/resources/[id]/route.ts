@@ -31,7 +31,11 @@ export async function DELETE(
     await deleteResource(id)
     return NextResponse.json({ ok: true })
   } catch (err) {
-    console.error('Resource delete failed:', err)
-    return NextResponse.json({ error: 'Error al eliminar recurso' }, { status: 409 })
+    const msg = err instanceof Error ? err.message : ''
+    console.error('Resource delete failed:', msg)
+    if (msg.includes('servicios asociados')) {
+      return NextResponse.json({ error: msg }, { status: 409 })
+    }
+    return NextResponse.json({ error: 'Error al eliminar recurso' }, { status: 500 })
   }
 }

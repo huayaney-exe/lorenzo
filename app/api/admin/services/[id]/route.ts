@@ -34,7 +34,11 @@ export async function DELETE(
     await deleteService(id)
     return NextResponse.json({ ok: true })
   } catch (err) {
-    console.error('Service delete failed:', err)
-    return NextResponse.json({ error: 'Error al eliminar servicio' }, { status: 409 })
+    const msg = err instanceof Error ? err.message : ''
+    console.error('Service delete failed:', msg)
+    if (msg.includes('reservas activas')) {
+      return NextResponse.json({ error: msg }, { status: 409 })
+    }
+    return NextResponse.json({ error: 'Error al eliminar servicio' }, { status: 500 })
   }
 }

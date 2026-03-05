@@ -224,7 +224,11 @@ export default function NewServicePage() {
           <select
             id="resource"
             value={resourceId}
-            onChange={(e) => setResourceId(e.target.value)}
+            onChange={(e) => {
+              setResourceId(e.target.value)
+              const res = resources.find((r) => r.id === e.target.value)
+              if (res && maxSpots > res.capacity) setMaxSpots(res.capacity)
+            }}
             className="w-full px-3 py-2 border border-black/10 rounded-brutal font-grotesk text-sm text-asphalt bg-white focus:outline-none focus:border-rojo transition-colors"
           >
             <option value="">Ninguno</option>
@@ -302,13 +306,17 @@ export default function NewServicePage() {
             type="number"
             required
             min={1}
+            max={selectedResource ? selectedResource.capacity : undefined}
             value={maxSpots}
-            onChange={(e) => setMaxSpots(Number(e.target.value))}
+            onChange={(e) => {
+              const v = Number(e.target.value)
+              setMaxSpots(selectedResource ? Math.min(v, selectedResource.capacity) : v)
+            }}
             className="w-full px-3 py-2 border border-black/10 rounded-brutal font-grotesk text-sm text-asphalt bg-white focus:outline-none focus:border-rojo transition-colors"
           />
           {selectedResource && (
             <p className="font-mono text-[10px] text-mid-gray">
-              Capacidad del recurso: {selectedResource.capacity} pers
+              Max {selectedResource.capacity} (capacidad de {selectedResource.name})
             </p>
           )}
         </fieldset>
